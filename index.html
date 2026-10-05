@@ -90,6 +90,10 @@ h2{font-size:1rem;margin:0}
 .no{font-family:var(--mono);font-size:.8rem;color:var(--accent)}
 .item{font-weight:700;overflow-wrap:anywhere}
 .meta{color:var(--muted);font-size:.83rem;display:flex;flex-wrap:wrap;gap:2px 12px}
+.chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:15px;color:var(--muted);line-height:1.5}
+.chain i{font-style:normal;opacity:.6}.chain .done{color:var(--muted)}
+.chain .cur{font-weight:800;padding:1px 8px;border-radius:6px}
+.chain .cur.sales{background:var(--sales-bg);color:var(--sales)}.chain .cur.design{background:var(--design-bg);color:var(--design)}.chain .cur.factory{background:var(--factory-bg);color:var(--factory)}.chain .cur.fin{background:var(--admin-bg);color:var(--done)}
 .prog{display:flex;gap:3px}
 .prog span{flex:1;height:6px;border-radius:3px;background:var(--line)}
 .prog span.sales{background:var(--sales)}.prog span.design{background:var(--design)}.prog span.factory{background:var(--factory)}.prog span.admin{background:var(--admin)}
@@ -359,6 +363,8 @@ const stepOf=r=>{const s=(r.step||"").trim();if(!s)return kindOf(r)==="design"?"
 function atDate(t){t=String(t||"");let m=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);const now=new Date();if(m)return new Date(+m[1],m[2]-1,+m[3]);
   m=t.match(/^(\d{1,2})-(\d{1,2})/);if(!m)return null;let d=new Date(now.getFullYear(),m[1]-1,+m[2]);if(d>now)d=new Date(now.getFullYear()-1,m[1]-1,+m[2]);return d}
 // 인쇄 끝 칸에 들어온 때: 지나온 일 중 마지막으로 그 칸이 된 줄, 없으면 바꾼 날짜
+// 도수: 세부(M) 숫자가 없으면 지나온 일에 서류 근거로 남긴 "도수 …" 줄을 씀(무옥님 10/5 21:46 "정확한 내용 기입")
+const colorLog=r=>{const l=(r.log||[]).filter(x=>/^도수 /.test(x.what||""));return l.length?l[l.length-1].what.slice(3):""};
 const afterAt=r=>{const l=(r.log||[]).filter(x=>normStep(x.step)===AFTER&&!/^관리-/.test(x.step||""));return (l.length?l[l.length-1].at:"")||r.at||""};
 // '납품 완료' 버튼으로 끝냈지만 서류 대조 전 → 보관함에 남김. 계산서 등 서류로 '끝'이 된 줄은 화면에서 사라짐(시트엔 남음, 무옥님 10/5 21:17)
 const isPend=r=>{if(stepOf(r)!==DONE)return false;const l=r.log||[];return /서류 대조 전/.test((l[l.length-1]||{}).what||"")};
@@ -463,10 +469,8 @@ function render(){
     return `<article class="card compact${op?" open":""}${changed.has(rowKey(r))?" changed flash":""}">
       <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}</span><span class="sp" title="${esc(spec)}">${spec}${r.due?` · <b class="${isLate?"late":""}">납품 ${esc(r.due.slice(5))}</b>`:/해커스/.test(r.client||"")?" · 납품일 확인필요":""}${isArch(r)?` · <b>📦 ${isPend(r)?"납품 완료 "+esc(String(((r.log||[]).slice(-1)[0]||{}).at||"").slice(0,5)):"인쇄 끝 "+esc(String(afterAt(r)).slice(0,5))} · 서류 확인 전</b>`:""}</span><span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?(isPend(r)?"납품 완료 · 📦 서류 확인 전":"끝"):known?esc(st.l)+(isArch(r)?" · 📦 서류 확인 전":""):"단계 확인필요"}</span><button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
       ${op?`<div class="body">
-      <div class="top">${r.no?`<span class="no">${esc(r.no)}</span>`:""}<span class="item">${esc(r.item)}</span></div>
       <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${qtyTxt(r)}</span>`:""}<span>${k==="design"?"디자인+인쇄":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
-      <div class="prog" aria-hidden="true">${ord.slice(0,-1).map((x,j)=>`<span class="${(fin||(i>=0&&j<=i))?SK[x].lane:""}${!fin&&j===i?" cur":""}"></span>`).join("")}</div>
-      <span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?"끝":known?`${laneName(st.lane)} · ${st.l}`:`단계 확인필요: ${esc(s)}`}</span>
+      ${known?`<div class="chain">${ord.map((x,j)=>{const done=fin||(i>=0&&j<i),cur=fin?x===DONE:j===i;return `<span class="${cur?"cur "+(fin?"fin":SK[x].lane):done?"done":""}">${done?"✓ ":""}${x===DONE?"끝":esc(SK[x].l)}</span>`}).join('<i>›</i>')}</div>`:`<span class="now bad">단계 확인필요: ${esc(s)}</span>`}
       ${itemsHtml(r)}
       ${didHtml(r,fStep||s)}
       ${r.note?`<div class="note">${esc(r.note)}</div>`:""}
@@ -501,7 +505,7 @@ function detailHtml(r,ord,i,nxt,fin,k){
   return `<section class="detail">
     <h4>자세한 내용</h4>
     ${row("접수번호",esc(r.no||""))}${row("품목",esc(r.item))}${row("거래처",esc(r.client||""))}${row("영업 담당",esc(r.sales||""))}
-    ${row("종류",k==="design"?"디자인+인쇄":"인쇄")}${row("부수",qtyTxt(r)||dtTxt(r))}${row("도수",r.colors?esc(r.colors)+"도":"")}${row("납품일",esc(r.due||""))}
+    ${row("종류",k==="design"?"디자인+인쇄":"인쇄")}${row("부수",qtyTxt(r)||dtTxt(r))}${row("도수",r.colors?esc(r.colors)+"도":esc(colorLog(r)))}${row("납품일",esc(r.due||""))}
     ${r.note?row("메모",esc(r.note)):""}
     ${itemsHtml(r)}
     <h4>지나온 일 · 근거</h4>
