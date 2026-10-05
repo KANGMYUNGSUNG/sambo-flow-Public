@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230a7fa3%22/%3E%3C/svg%3E">
 <meta name="flow-api" content="https://script.google.com/macros/s/AKfycbzBwZOdEMqscSEKkb38uKVYesqP0hOGbIrSMY2A4T7L8hiH5hoq1Atkb4O25023LjARIg/exec">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 rx=%223%22 fill=%22%230a7fa3%22/%3E%3C/svg%3E">
 <base target="_top">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -355,9 +355,14 @@ function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTime
 
 // 단계 칸 안에 거래처 이름 칩(같은 거래처는 ×건수), 4개 넘으면 +n
 // 단계 칸 안에 건 이름을 한 줄씩(오래된 순) — 무옥님 10/5 "하나하나 보기 힘들어". 칸에 안 들어가는 건 '+n건 더'
+// 디티피아는 주문이 많아 묶음 1건으로 셈(무옥님 10/5 "디티피아 건은 토탈로 한 건"). 펼친 목록엔 개별 건 그대로
+const isDt=r=>/디티피아/.test(r.client||"");
+const units=list=>list.filter(r=>!isDt(r)).length+(list.some(isDt)?1:0);
 function jobsHtml(list){
   if(!list||!list.length)return "";
-  return `<span class="jl">${[...list].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`;
+  const dt=list.filter(isDt),rest=list.filter(r=>!isDt(r));
+  const dtLine=dt.length?`<span data-job="${[...dt].sort(byOld)[0].row}" title="디티피아 ${dt.length}건 묶음"><b>디티피아</b>${dt.length}건 묶음</span>`:"";
+  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`;
 }
 // 칸 높이에 맞게 줄 수 자르기(스크롤 없음). 폰은 칸마다 3줄까지
 function fitSteps(){
@@ -401,16 +406,16 @@ function renderDaily(){
 function render(){
   const rows=data?.rows||[];
   renderDaily();
-  const counts={};rows.forEach(r=>{const s=stepOf(r);counts[s]=(counts[s]||0)+1});
   const by={};rows.forEach(r=>{const s=stepOf(r);(by[s]=by[s]||[]).push(r)});
+  const counts={};Object.keys(by).forEach(s=>{counts[s]=units(by[s])});
   fillClients(rows);
   $("lanes").innerHTML=LANES.map(L=>`<div class="lane" data-l="${L.k}"><div class="lane-name">${L.name}<small>${L.sub}</small></div>
     <div class="row">${STEPS.filter(s=>s.lane===L.k).map((s,i,a)=>{const n=counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(by[s.key])}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
   requestAnimationFrame(fitSteps);
   const open=rows.filter(r=>stepOf(r)!==DONE),late=open.filter(r=>r.due&&r.due<today());
-  const byLane=k=>open.filter(r=>SK[stepOf(r)]?.lane===k).length;
-  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${open.length}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late" data-k="late"><b>${late.length}</b>납품일 지남</button><button type="button" class="kpi" data-k="done"><b>${rows.length-open.length}</b>끝</button>`;
-  $("openList").textContent=`건별 현황 보기 (${open.length})`;
+  const byLane=k=>units(open.filter(r=>SK[stepOf(r)]?.lane===k));
+  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late" data-k="late"><b>${units(late)}</b>납품일 지남</button><button type="button" class="kpi" data-k="done"><b>${units(rows.filter(r=>stepOf(r)===DONE))}</b>끝</button>`;
+  $("openList").textContent=`건별 현황 보기 (${units(open)})`;
   const lane=$("fLane").value,sales=$("fSales").value,dn=$("fDone").value;const client=$("fClient").value;
   const view=rows.filter(r=>{const s=stepOf(r),fin=s===DONE;
     if(fStep)return s===fStep;
@@ -422,7 +427,7 @@ function render(){
   // 진행 중 한눈에: 지금 어느 단계에 몇 건인지(흐름 순서대로) — 누르면 그 단계만
   const sumEl=$("dSum");
   if(!fStep&&!fLate&&dn!=="done"){
-    const cnt={};view.forEach(r=>{const s=stepOf(r);if(s!==DONE)cnt[s]=(cnt[s]||0)+1});
+    const grp={};view.forEach(r=>{const s=stepOf(r);if(s!==DONE)(grp[s]=grp[s]||[]).push(r)});const cnt={};Object.keys(grp).forEach(s=>{cnt[s]=units(grp[s])});
     const steps=Object.keys(cnt).sort((a,b)=>(STEP_IDX[a]??999)-(STEP_IDX[b]??999));
     sumEl.innerHTML=steps.length?`<span class="lbl">지금 하는 일</span>`+steps.map(x=>`<button type="button" data-sum="${esc(x)}">${SK[x]?`${laneName(SK[x].lane)} · ${SK[x].l}`:esc(x)}<b>${cnt[x]}</b></button>`).join(""):"";
     sumEl.hidden=!steps.length;
