@@ -516,9 +516,9 @@ function detailHtml(r,ord,i,nxt,fin,k){
 function delivHtml(r){
   const id=r.row,d=deliv&&deliv.id===id?deliv:null;
   if(!d)return `<h4>납품</h4><div class="btns"><button class="b p" type="button" data-deliv="${id}">🚚 납품 완료</button></div>`;
-  const need=d.m==="택배"?"송장번호":d.m==="용달(다마스)"?"용달 업체 이름":"";
+  const need=d.m==="택배"?"송장번호":d.m==="용달"?"용달 업체 이름":"";
   return `<h4>납품 완료</h4><div class="form deliv">
-    <div class="btns">${["영업 직접","용달(다마스)","택배"].map(m=>`<button class="b${d.m===m?" p":""}" type="button" data-dm="${m}" aria-pressed="${d.m===m}">${m}</button>`).join("")}</div>
+    <div class="btns">${["영업 직접","용달","택배"].map(m=>`<button class="b${d.m===m?" p":""}" type="button" data-dm="${m}" aria-pressed="${d.m===m}">${m}</button>`).join("")}</div>
     ${need?`<label>${need}<input data-dinfo value="${esc(d.info||"")}" placeholder="${need}"></label>`:""}
     ${d.m?`<div class="confirm"><span>'끝'(납품 완료 · ${esc(d.m)})으로 넘길까?</span><button class="b p" type="button" data-dok="${id}">납품 완료로 넘기기</button><button class="b" type="button" data-dcancel>취소</button></div>`:`<div class="btns"><span class="muted">어떻게 보냈는지 골라 줘.</span><button class="b" type="button" data-dcancel>취소</button></div>`}
   </div>`;
@@ -615,7 +615,7 @@ $("list").addEventListener("click",e=>{
   if(e.target.closest("button[data-dcancel]")){deliv=null;render();return}
   const dk=e.target.closest("button[data-dok]");if(dk&&deliv){const d=deliv,r=data.rows.find(x=>x.row===d.id);if(!r)return;
     const inp=document.querySelector("[data-dinfo]");d.info=inp?inp.value.trim():"";
-    if(d.m==="택배"&&!d.info){toast("송장번호를 넣어 줘.");return}if(d.m==="용달(다마스)"&&!d.info){toast("용달 업체 이름을 넣어 줘.");return}
+    if(d.m==="택배"&&!d.info){toast("송장번호를 넣어 줘.");return}if(d.m==="용달"&&!d.info){toast("용달 업체 이름을 넣어 줘.");return}
     if(dk.disabled)return;dk.disabled=true;dk.textContent="저장 중…";deliv=null;
     save(r.row,{step:DONE,detail:{where:d.m+(d.info?(d.m==="택배"?" 송장 ":" ")+d.info:""),what:"납품 완료(서류 대조 전)"}});return}
   const cc=e.target.closest("button[data-cancel]");if(cc){pendingMove=null;render();return}
