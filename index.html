@@ -435,7 +435,7 @@ function render(){
     const nxt=i>=0&&!fin?ord[i+1]:null;
     const op=openRow===id,spec=itemsSum(r)||[r.qty?esc(r.qty)+"부":"",r.colors?esc(r.colors)+"도":""].filter(Boolean).join(" · ")||"부수 확인필요";
     return `<article class="card compact${op?" open":""}${changed.has(rowKey(r))?" changed flash":""}">
-      <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}</span><span class="sp" title="${esc(spec)}">${spec}</span><span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?"끝":known?esc(st.l):"단계 확인필요"}</span><button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
+      <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}</span><span class="sp" title="${esc(spec)}">${spec}${r.due?` · <b class="${isLate?"late":""}">납품 ${esc(r.due.slice(5))}</b>`:/해커스/.test(r.client||"")?" · 납품일 확인필요":""}</span><span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?"끝":known?esc(st.l):"단계 확인필요"}</span><button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
       ${op?`<div class="body">
       <div class="top">${r.no?`<span class="no">${esc(r.no)}</span>`:""}<span class="item">${esc(r.item)}</span></div>
       <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${esc(r.qty)}부</span>`:""}<span>${k==="design"?"디자인+인쇄":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
