@@ -280,7 +280,7 @@ body{font-size:1rem}
     </form>
     <div class="listbox" id="listbox"><div class="list" id="list"></div></div>
     <div class="pager" id="pager" hidden><span id="pgTxt"></span><button type="button" class="b" id="pgPrev">◀ 앞</button><button type="button" class="b" id="pgNext">다음 ▶</button></div>
-    <p class="who">단계를 누르면 이 화면을 연 모든 사람한테 몇 초 안에 똑같이 바뀌어. 저장은 구글 시트 '삼보 작업현황'에 돼.</p>
+    <p class="who">단계를 바꾸면 이 화면을 연 모든 사람한테 몇 초 안에 똑같이 바뀌어. 저장은 구글 시트 '삼보 작업현황'에 돼.</p>
   </section>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
@@ -288,7 +288,7 @@ body{font-size:1rem}
 const LANES=[{k:"sales",name:"영업",sub:"강명성·김지열·박인규"},{k:"design",name:"디자인",sub:"디자인팀"},{k:"factory",name:"공장",sub:"생산·외주"}];
 const STEPS=[
   ["sales","견적 요청 받음","거래처 메일"],["sales","견적 보냄","견적서·회신"],["sales","제작 요청·접수","접수대장 번호"],
-  ["design","디자인 요청","컨셉·납품일 상의"],["design","편집 작업","인디자인"],["design","거래처 컨펌","시안·수정"],["design","최종 파일 전달","인쇄용 파일"],
+  ["design","디자인 요청","콘셉트·납품일 상의"],["design","편집 작업","인디자인"],["design","거래처 컨펌","시안·수정"],["design","최종 파일 전달","인쇄용 파일"],
   ["factory","작업지시서·발주","용지·코팅 발주"],["factory","CTP 출력","사내·외주 출력소 (팩스)"],["factory","인쇄","표지·내지 (CIP)"],["factory","인쇄 끝 · 후가공/납품 중","계산서·납품 서류 확인되면 끝"]
 ].map(([lane,l,t,check])=>({lane,l,t,check,key:`${{sales:"영업",design:"디자인",factory:"공장",admin:"관리"}[lane]}-${l}`}));
 const SK=Object.fromEntries(STEPS.map(s=>[s.key,s]));
@@ -333,7 +333,7 @@ const API=(document.querySelector('meta[name="flow-api"]')||{}).content||"";
 const GS=!!(window.google&&google.script&&google.script.run);
 const MOCK=!GS&&!API;
 function api(fn,args){return fetch(API,{method:"POST",credentials:"omit",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({fn,args})}).then(r=>r.json()).then(o=>{if(!o.ok)throw new Error(o.err||"연결이 안 돼.");return o.res})}
-let mockRows=[{row:2,no:"S 10-4",item:"(예시) 해커스 토익 750 LC",client:"해커스",qty:"3000",kind:"인쇄만",sales:"강명성",step:"공장-인쇄",due:"2026-10-02",by:"예시",at:"10-04 13:30",log:[{at:"09-24 10:12",step:"영업-견적 요청 받음",where:"해커스 출판팀 이OO 과장 (메일)",what:"토익 750 LC 3000부 견적 요청",by:"견적 메일 자동"},{at:"09-24 15:40",step:"영업-견적 보냄",where:"해커스 출판팀 이OO 과장 (메일 회신)",what:"토익 750 LC 3000부 · 내지 1도 · 표지 4도 코팅 견적서",by:"강명성"},{at:"09-26 09:05",step:"영업-제작 요청·접수",where:"해커스",what:"접수대장 S 10-4",by:"흐름표 화면"},{at:"10-01 11:20",step:"공장-CTP 출력",where:"SD 출력소 (팩스)",what:"작업지시서 들어옴",by:"작업지시서 자동"},{at:"10-04 13:30",step:"공장-인쇄",where:"사내 인쇄기",what:"CIP 판 데이터 들어옴",by:"CIP 자동"}]},{row:3,item:"(예시) 협회 리플렛",client:"예시협회",kind:"디자인+인쇄",sales:"김지열",step:"디자인-거래처 컨펌",due:"2026-10-20",log:[{at:"10-02 14:00",step:"디자인-디자인 요청",where:"예시협회 박OO 팀장 (전화)",what:"A4 3단 리플렛 디자인 상의",by:"김지열"},{at:"10-04 17:10",step:"디자인-거래처 컨펌",where:"예시협회 박OO 팀장 (메일)",what:"시안 1차 보냄, 회신 기다림",by:"디자인팀"}]},{row:5,no:"S 9-1",item:"(예시) 디티피아 9월 1차",client:"디티피아",kind:"인쇄만",sales:"박인규",step:"영업-제작 요청·접수",items:[{name:"(예시) 일반명함 스노우 250g",colors:"4",qty:"2,000",reams:"0.5"},{name:"(예시) A4 전단 아트 150g",colors:"4",qty:"8,000",reams:"2"},{name:"(예시) 봉투 소봉투 모조 120g",colors:"1",qty:"1,000",reams:"0.5"},{name:"(예시) 스티커 아트지",colors:"4",qty:"500",reams:""}],log:[{at:"09-01 18:40",step:"영업-제작 요청·접수",where:"디티피아 사이트 주문",what:"9월 1차 주문 4건",by:"디티피아 자동"}]},{row:6,no:"S 9-5",item:"(예시) 2027년 정시 모집요강",client:"경기대학교",qty:"30000",kind:"인쇄만",sales:"강명성",step:"영업-제작 요청·접수"},{row:4,item:"(예시) 동아 전람 카탈로그",client:"동아전람",qty:"500",kind:"인쇄만",sales:"박인규",step:"영업-견적 보냄",log:[{at:"10-05 09:31",step:"영업-견적 요청 받음",where:"동아전람 최OO 대리 (메일)",what:"카탈로그 24면 500부 견적 요청",by:"견적 메일 자동"},{at:"10-05 14:03",step:"영업-견적 보냄",where:"동아전람 최OO 대리 (메일 회신)",what:"카탈로그 24면 500부 · 4도 · 무선제본 견적서",by:"견적 메일 자동"}]}];
+let mockRows=[{row:2,no:"S 10-4",item:"(예시) 해커스 토익 750 LC",client:"해커스",qty:"3000",kind:"인쇄만",sales:"강명성",step:"공장-인쇄",due:"2026-10-02",by:"예시",at:"10-04 13:30",log:[{at:"09-24 10:12",step:"영업-견적 요청 받음",where:"해커스 출판팀 이OO 과장 (메일)",what:"토익 750 LC 3000부 견적 요청",by:"견적 메일 자동"},{at:"09-24 15:40",step:"영업-견적 보냄",where:"해커스 출판팀 이OO 과장 (메일 회신)",what:"토익 750 LC 3000부 · 내지 1도 · 표지 4도 코팅 견적서",by:"강명성"},{at:"09-26 09:05",step:"영업-제작 요청·접수",where:"해커스",what:"접수대장 S 10-4",by:"흐름표 화면"},{at:"10-01 11:20",step:"공장-CTP 출력",where:"SD 출력소 (팩스)",what:"작업지시서 들어옴",by:"작업지시서 자동"},{at:"10-04 13:30",step:"공장-인쇄",where:"사내 인쇄기",what:"CIP 판 데이터 들어옴",by:"CIP 자동"}]},{row:3,item:"(예시) 협회 리플렛",client:"예시협회",kind:"디자인+인쇄",sales:"김지열",step:"디자인-거래처 컨펌",due:"2026-10-20",log:[{at:"10-02 14:00",step:"디자인-디자인 요청",where:"예시협회 박OO 팀장 (전화)",what:"A4 3단 리플렛 디자인 상의",by:"김지열"},{at:"10-04 17:10",step:"디자인-거래처 컨펌",where:"예시협회 박OO 팀장 (메일)",what:"시안 1차 보냄, 회신 기다림",by:"디자인팀"}]},{row:5,no:"S 9-1",item:"(예시) 디티피아 9월 1차",client:"디티피아",kind:"인쇄만",sales:"박인규",step:"영업-제작 요청·접수",items:[{name:"(예시) 일반명함 스노우 250g",colors:"4",qty:"2,000",reams:"0.5"},{name:"(예시) A4 전단 아트 150g",colors:"4",qty:"8,000",reams:"2"},{name:"(예시) 봉투 소봉투 모조 120g",colors:"1",qty:"1,000",reams:"0.5"},{name:"(예시) 스티커 아트지",colors:"4",qty:"500",reams:""}],log:[{at:"09-01 18:40",step:"영업-제작 요청·접수",where:"디티피아 사이트 주문",what:"9월 1차 주문 4건",by:"디티피아 자동"}]},{row:6,no:"S 9-5",item:"(예시) 2027년 정시 모집요강",client:"경기대학교",qty:"30000",kind:"인쇄만",sales:"강명성",step:"영업-제작 요청·접수"},{row:4,item:"(예시) 동아전람 카탈로그",client:"동아전람",qty:"500",kind:"인쇄만",sales:"박인규",step:"영업-견적 보냄",log:[{at:"10-05 09:31",step:"영업-견적 요청 받음",where:"동아전람 최OO 대리 (메일)",what:"카탈로그 24면 500부 견적 요청",by:"견적 메일 자동"},{at:"10-05 14:03",step:"영업-견적 보냄",where:"동아전람 최OO 대리 (메일 회신)",what:"카탈로그 24면 500부 · 4도 · 무선제본 견적서",by:"견적 메일 자동"}]}];
 // 비밀번호 열쇠: 맞은 브라우저에만 저장(30일). 서버가 'LOGIN'이라 하면 비밀번호 칸을 다시 띄움
 let KEY=store.get("samboFlowKey")||"";
 function showGate(m){$("gate").hidden=false;$("gateMsg").textContent=m||"";$("gatePw").value="";setTimeout(()=>$("gatePw").focus(),50)}
@@ -485,7 +485,7 @@ function render(){
           <label>접수번호<input data-f="no" data-id="${id}" value="${esc(r.no)}"></label>
           <label>납품일<input type="date" data-f="due" data-id="${id}" value="${esc(r.due)}"></label>
           <label>메모<input data-f="note" data-id="${id}" value="${esc(r.note)}"></label>
-          <label>이 단계 내용 적기 (어디에·무엇을)<input data-f="detail" data-id="${id}" placeholder="예: 해커스 이과장 메일 · 3000부 견적서"></label>
+          <label>이 단계 내용 적기 (어디에·무엇을)<input data-f="detail" data-id="${id}" placeholder="예: 해커스 이 과장 메일 · 3000부 견적서"></label>
         </div>
       </details>
       <button type="button" class="back sm" data-close="${id}">▲ 접기</button>
