@@ -91,7 +91,7 @@ h2{font-size:1rem;margin:0}
 .item{font-weight:700;overflow-wrap:anywhere}
 .meta{color:var(--muted);font-size:.83rem;display:flex;flex-wrap:wrap;gap:2px 12px}
 .chain{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:15px;color:var(--muted);line-height:1.5}
-.chain i{font-style:normal;opacity:.6}.chain .done{color:var(--muted)}
+.chain i{font-style:normal;opacity:.6}.jl .ws{font-style:normal;color:var(--factory);font-weight:700}.chain .done{color:var(--muted)}
 .chain .cur{font-weight:800;padding:1px 8px;border-radius:6px}
 .chain .cur.sales{background:var(--sales-bg);color:var(--sales)}.chain .cur.design{background:var(--design-bg);color:var(--design)}.chain .cur.factory{background:var(--factory-bg);color:var(--factory)}.chain .cur.fin{background:var(--admin-bg);color:var(--done)}
 .prog{display:flex;gap:3px}
@@ -293,16 +293,19 @@ const LANES=[{k:"sales",name:"영업",sub:"강명성·김지열·박인규"},{k:
 const STEPS=[
   ["sales","견적 요청 받음","거래처 메일"],["sales","견적 보냄","견적서·회신"],["sales","제작 요청·접수","접수대장 번호"],
   ["design","디자인 요청","콘셉트·납품일 상의"],["design","편집 작업","인디자인"],["design","거래처 컨펌","시안·수정"],["design","최종 파일 전달","인쇄용 파일"],
-  ["factory","작업지시서·발주","용지·코팅 발주"],["factory","CTP 출력","사내·외주 출력소 (팩스)"],["factory","인쇄","표지·내지 (CIP)"],["factory","인쇄 끝 · 후가공/납품 중","계산서·납품 서류 확인되면 끝"]
-].map(([lane,l,t,check])=>({lane,l,t,check,key:`${{sales:"영업",design:"디자인",factory:"공장",admin:"관리"}[lane]}-${l}`}));
+  ["factory","작업지시서·발주","용지·코팅 발주"],["factory","CTP 출력","사내·외주 출력소 (팩스)"],["factory","인쇄","표지·내지 (CIP)"],["factory","인쇄 끝 · 후가공/납품 중","계산서·납품 서류 확인되면 끝"],
+  // 명함 등 와우프레스 외주(무옥님 10/5 22:03): PC가 와우 주문 상태를 읽어 자동으로 넘김. 건이 있을 때만 칸이 보임
+  ["factory","외주 주문","와우프레스","","공장-와우 주문"],["factory","외주 제작 중","와우프레스","","공장-와우 제작 중"],["factory","외주 출고","와우프레스 배송","","공장-와우 출고"]
+].map(([lane,l,t,check,key])=>({lane,l,t,check,key:key||`${{sales:"영업",design:"디자인",factory:"공장",admin:"관리"}[lane]}-${l}`}));
 const SK=Object.fromEntries(STEPS.map(s=>[s.key,s]));
 const STEP_IDX=Object.fromEntries(STEPS.map((s,i)=>[s.key,i]));
 const DONE="끝";
 // 간소화(무옥님 10/5 21:15): 실시간 근거가 있는 건 디자인(메일)·인쇄(CIP)까지. 인쇄 뒤(코팅·후가공·제본·납품·관리)는 한 칸으로 묶음
 const AFTER="공장-인쇄 끝 · 후가공/납품 중",AFTER_OLD=["공장-코팅·후가공","공장-제본","공장-납품","관리-거래명세표","관리-계산서 확인 메일","관리-세금계산서 발행","관리-입금 확인"];
 const ARCH_DAYS=7; // 인쇄 끝 칸에 이 날수 넘게 있으면 첫 화면에서 빠져 📦보관함('서류 확인 전')으로(지우지 않음)
-const P=["영업-견적 요청 받음","영업-견적 보냄","영업-제작 요청·접수"],F=STEPS.filter(s=>s.lane==="factory"||s.lane==="admin").map(s=>s.key);
-const ORDER={print:[...P,...F,DONE],design:["디자인-디자인 요청","디자인-편집 작업","디자인-거래처 컨펌","영업-견적 보냄","디자인-최종 파일 전달","영업-제작 요청·접수",...F,DONE]};
+const P=["영업-견적 요청 받음","영업-견적 보냄","영업-제작 요청·접수"],W=STEPS.filter(s=>/^공장-와우/.test(s.key)).map(s=>s.key),F=STEPS.filter(s=>(s.lane==="factory"||s.lane==="admin")&&!W.includes(s.key)).map(s=>s.key);
+const WOWCELL={lane:"factory",l:"외주(와우프레스)",t:"주문·제작·출고",key:"외주(와우프레스)"};
+const ORDER={wow:[...P,...W,DONE],print:[...P,...F,DONE],design:["디자인-디자인 요청","디자인-편집 작업","디자인-거래처 컨펌","영업-견적 보냄","디자인-최종 파일 전달","영업-제작 요청·접수",...F,DONE]};
 const BY="흐름표 화면"; // 이름 고르기 없앰(무옥님 10/5) — 바꾼 사람 칸엔 이 글자
 const laneName=k=>LANES.find(L=>L.k===k).name;
 const stepName=k=>k===DONE?"끝":SK[k]?`${laneName(SK[k].lane)} · ${SK[k].l}`:k?String(k).replace(/^(영업|디자인|공장|관리)-/,"$1 · "):"단계 확인필요";
@@ -358,7 +361,7 @@ function call(fn,...args){
 let openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
 // 고르기 칸은 기억하지 않음: 서랍을 열 때마다 늘 전체로 시작(무옥님 10/5 "거르기 풀기 필요 없으면 빼")
 const rowKey=r=>(r.no||"")+"|"+r.item;
-const kindOf=r=>(r.kind||"").includes("디자인")?"design":"print";
+const kindOf=r=>/^공장-와우/.test(r.step||"")||/와우/.test(r.kind||"")?"wow":(r.kind||"").includes("디자인")?"design":"print";
 const normStep=s=>AFTER_OLD.includes(s)?AFTER:s;
 const stepOf=r=>{const s=(r.step||"").trim();if(!s)return kindOf(r)==="design"?"디자인-디자인 요청":"영업-견적 요청 받음";return normStep(s)};
 // 'MM-dd HH:mm'(해 없음) 또는 'yyyy-MM-dd' → 날짜. 앞날이 되면 작년으로
@@ -373,7 +376,8 @@ const afterAt=r=>{const l=(r.log||[]).filter(x=>normStep(x.step)===AFTER&&!/^관
 // '납품 완료' 버튼으로 끝냈지만 서류 대조 전 → 보관함에 남김. 계산서 등 서류로 '끝'이 된 줄은 화면에서 사라짐(시트엔 남음, 무옥님 10/5 21:17)
 const isPend=r=>{if(stepOf(r)!==DONE)return false;const l=r.log||[];return /서류 대조 전/.test((l[l.length-1]||{}).what||"")};
 const isGone=r=>stepOf(r)===DONE&&!isPend(r);
-const isArch=r=>{if(isPend(r))return true;if(stepOf(r)!==AFTER)return false;const d=atDate(afterAt(r));return !!d&&(Date.now()-d)/864e5>=ARCH_DAYS};
+const wowOutAt=r=>{const l=(r.log||[]).filter(x=>x.step==="공장-와우 출고");return (l.length?l[l.length-1].at:"")||r.at||""};
+const isArch=r=>{if(isPend(r))return true;if(stepOf(r)==="공장-와우 출고"){const d=atDate(wowOutAt(r));return !!d&&(Date.now()-d)/864e5>=ARCH_DAYS}if(stepOf(r)!==AFTER)return false;const d=atDate(afterAt(r));return !!d&&(Date.now()-d)/864e5>=ARCH_DAYS};
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{el.hidden=true},3500)}
 
 // 단계 칸 안에 거래처 이름 칩(같은 거래처는 ×건수), 4개 넘으면 +n
@@ -391,7 +395,7 @@ function jobsHtml(list,key){
   if(key===AFTER){const t=units(list);list=[...list].sort((a,b)=>String(afterAt(b)).localeCompare(String(afterAt(a)))).slice(0,3);extra=t-units(list)} // 최근 3건만, 나머지는 '+n건 더'
   const dt=list.filter(isDt),rest=list.filter(r=>!isDt(r));
   const dtLine=dt.length?`<span data-job="${[...dt].sort(byOld)[0].row}" title="디티피아 ${dt.length}건 묶음"><b>디티피아</b>${dt.length}건 묶음</span>`:"";
-  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`.replace('<span class="jl">',`<span class="jl" data-extra="${extra}">`);
+  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${key===WOWCELL.key?`<i class="ws">${esc(SK[stepOf(r)]?.l.replace("외주 ","")||"")}</i> `:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`.replace('<span class="jl">',`<span class="jl" data-extra="${extra}">`);
 }
 // 칸 높이에 맞게 줄 수 자르기(스크롤 없음). 폰은 칸마다 3줄까지
 function fitSteps(){
@@ -438,9 +442,10 @@ function render(){
   renderDaily();
   const by={};rows.forEach(r=>{const s=stepOf(r);(by[s]=by[s]||[]).push(r)});
   const counts={};Object.keys(by).forEach(s=>{counts[s]=units(by[s])});
+  const wowList=rows.filter(r=>W.includes(stepOf(r)));
   fillClients(rows);
   $("lanes").innerHTML=LANES.map(L=>`<div class="lane" data-l="${L.k}"><div class="lane-name">${L.name}<small>${L.sub}</small></div>
-    <div class="row">${STEPS.filter(s=>s.lane===L.k).map((s,i,a)=>{const n=counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
+    <div class="row">${[...STEPS.filter(s=>s.lane===L.k&&!W.includes(s.key)),...(L.k==="factory"&&wowList.length?[WOWCELL]:[])].map((s,i,a)=>{const n=s===WOWCELL?units(wowList):counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(s===WOWCELL?wowList:by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
   requestAnimationFrame(fitSteps);
   const open=rows.filter(r=>stepOf(r)!==DONE),late=open.filter(r=>r.due&&r.due<today());
   const byLane=k=>units(open.filter(r=>SK[stepOf(r)]?.lane===k));
@@ -448,7 +453,7 @@ function render(){
   $("openList").textContent=`건별 현황 보기 (${units(open)})`;
   const lane=$("fLane").value,sales=$("fSales").value,dn=$("fDone").value;const client=$("fClient").value;
   const view=(dn==="arch"?arch:rows).filter(r=>{const s=stepOf(r),fin=s===DONE;
-    if(fStep)return s===fStep;
+    if(fStep)return fStep===WOWCELL.key?W.includes(s):s===fStep;
     if(fLate)return !fin&&r.due&&r.due<today();
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
     if(lane&&(fin||SK[s]?.lane!==lane))return false;
@@ -462,7 +467,7 @@ function render(){
     sumEl.innerHTML=steps.length?`<span class="lbl">지금 하는 일</span>`+steps.map(x=>`<button type="button" data-sum="${esc(x)}">${SK[x]?`${laneName(SK[x].lane)} · ${SK[x].l}`:esc(x)}<b>${cnt[x]}</b></button>`).join(""):"";
     sumEl.hidden=!steps.length;
   }else if(!stepFromSum){sumEl.hidden=true}
-  $("dTitle").textContent=fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
+  $("dTitle").textContent=fStep===WOWCELL.key?`공장 · ${WOWCELL.l} (${view.length}건)`:fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
   if(!data){$("list").innerHTML=`<div class="empty">불러오는 중…</div>`;return}
   if(!view.length){$("list").innerHTML=`<div class="empty">${rows.length?"조건에 맞는 건이 없어.":"아직 등록된 건이 없어. '+ 새 건'으로 넣어 봐."}</div>`;return}
   $("list").innerHTML=view.map(r=>{
@@ -473,10 +478,10 @@ function render(){
     return `<article class="card compact${op?" open":""}${changed.has(rowKey(r))?" changed flash":""}">
       <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}</span><span class="sp" title="${esc(spec)}">${spec}${r.due?` · <b class="${isLate?"late":""}">납품 ${esc(r.due.slice(5))}</b>`:/해커스/.test(r.client||"")&&!/^영업-견적/.test(s)?" · 납품일 확인필요":""}${/^영업-견적/.test(s)&&multiQty(r)?" · <b>부수 확인필요</b>":""}${isArch(r)?` · <b>📦 ${isPend(r)?"납품 완료 "+esc(String(((r.log||[]).slice(-1)[0]||{}).at||"").slice(0,5)):"인쇄 끝 "+esc(String(afterAt(r)).slice(0,5))} · 서류 확인 전</b>`:""}</span><span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?(isPend(r)?"납품 완료 · 📦 서류 확인 전":"끝"):known?esc(st.l)+(isArch(r)?" · 📦 서류 확인 전":""):"단계 확인필요"}</span><button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
       ${op?`<div class="body">
-      <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${qtyTxt(r)}</span>`:""}<span>${k==="design"?"디자인+인쇄":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
+      <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${qtyTxt(r)}</span>`:""}<span>${k==="design"?"디자인+인쇄":k==="wow"?"외주(와우프레스)":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
       ${known?`<div class="chain">${ord.map((x,j)=>{const done=fin||(i>=0&&j<i),cur=fin?x===DONE:j===i;return `<span class="${cur?"cur "+(fin?"fin":SK[x].lane):done?"done":""}">${done?"✓ ":""}${x===DONE?"끝":esc(SK[x].l)}</span>`}).join('<i>›</i>')}</div>`:`<span class="now bad">단계 확인필요: ${esc(s)}</span>`}
       ${itemsHtml(r)}
-      ${didHtml(r,fStep||s)}
+      ${didHtml(r,fStep&&fStep!==WOWCELL.key?fStep:s)}
       ${r.note?`<div class="note">${esc(r.note)}</div>`:""}
       ${(r.log||[]).length>1?`<details class="hist" data-id="${id}"${histOpen===id?" open":""}><summary>지나온 일 ${r.log.length}개 보기</summary><button type="button" class="back sm" data-back="hist">← 뒤로</button><ol>${r.log.map(x=>`<li><b>${esc(stepName(x.step))}</b> <small>${esc(x.at)}</small> · ${esc(x.where||"어디 확인필요")} · ${esc(x.what||"내용 확인필요")}</li>`).join("")}</ol></details>`:""}
       <div class="crow">
@@ -509,7 +514,7 @@ function detailHtml(r,ord,i,nxt,fin,k){
   return `<section class="detail">
     <h4>자세한 내용</h4>
     ${row("접수번호",esc(r.no||""))}${row("품목",esc(r.item))}${row("거래처",esc(r.client||""))}${row("영업 담당",esc(r.sales||""))}
-    ${row("종류",k==="design"?"디자인+인쇄":"인쇄")}${row("부수",qtyTxt(r)||dtTxt(r))}${row("도수",r.colors?esc(r.colors)+"도":esc(colorLog(r)))}${row("납품일",esc(r.due||""))}
+    ${row("종류",k==="design"?"디자인+인쇄":k==="wow"?"외주(와우프레스)":"인쇄")}${row("부수",qtyTxt(r)||dtTxt(r))}${row("도수",r.colors?esc(r.colors)+"도":esc(colorLog(r)))}${row("납품일",esc(r.due||""))}
     ${r.note?row("메모",esc(r.note)):""}
     ${itemsHtml(r)}
     <h4>지나온 일 · 근거</h4>
