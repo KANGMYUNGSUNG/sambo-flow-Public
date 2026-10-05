@@ -139,6 +139,7 @@ details.more summary{cursor:pointer;color:var(--muted)}
 .detail h4{margin:.5rem 0 .1rem;font-size:1rem}
 .detail .dl{display:flex;gap:.8rem;font-size:.95rem}.detail .dl span{min-width:5.5em;color:var(--muted,#888)}.detail .dl b{font-weight:600;word-break:break-all}
 .detail .dlog{margin:0;padding-left:1.2rem;display:flex;flex-direction:column;gap:.4rem;font-size:.92rem}
+.detail .deliv{display:flex;flex-direction:column;gap:.5rem}.detail .deliv label{display:flex;flex-direction:column;gap:.25rem;font-size:.92rem}.detail .deliv input{font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
 .detail .btns,.detail .confirm{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}.detail .confirm span{font-weight:700;width:100%}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:60;background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:.88rem;max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
@@ -346,7 +347,7 @@ function call(fn,...args){
   return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args));
 }
 
-let openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null;
+let openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
 // 고르기 칸은 기억하지 않음: 서랍을 열 때마다 늘 전체로 시작(무옥님 10/5 "거르기 풀기 필요 없으면 빼")
 const rowKey=r=>(r.no||"")+"|"+r.item;
 const kindOf=r=>(r.kind||"").includes("디자인")?"design":"print";
@@ -486,10 +487,22 @@ function detailHtml(r,ord,i,nxt,fin,k){
     ${itemsHtml(r)}
     <h4>지나온 일 · 근거</h4>
     ${(r.log||[]).length?`<ol class="dlog">${r.log.map(x=>`<li><b>${esc(stepName(x.step))}</b> <small>${esc(x.at)}</small><br>어디: ${esc(x.where||"확인필요")}<br>무엇: ${esc(x.what||"확인필요")}<br><small>출처: ${esc(x.by||"확인필요")}</small></li>`).join("")}</ol>`:`<p class="muted">기록 없음(확인필요)</p>`}
+    ${fin?"":delivHtml(r)}
     <h4>단계 바꾸기</h4>
     ${pm?`<div class="confirm"><span>'${esc(nm(pm.to))}' 단계로 ${pm.dir==="next"?"넘길까":"되돌릴까"}?</span><button class="b p" type="button" data-ok="${id}">${pm.dir==="next"?"넘기기":"되돌리기"}</button><button class="b" type="button" data-cancel="${id}">취소</button></div>`
     :`<div class="btns"><button class="b" type="button" data-act="prev" data-id="${id}" ${!prv?"disabled":""}>이전 단계로</button><button class="b p" type="button" data-act="next" data-id="${id}" ${!nxt?"disabled":""}>${nxt?`다음 단계: ${nxt===DONE?"끝":SK[nxt].l}`:"끝"}</button></div>`}
   </section>`;
+}
+// 납품 완료(무옥님 10/5 '3번': 납품한 사람이 누르고, Claude가 나중에 명세표·용달 청구·택배 송장으로 대조)
+function delivHtml(r){
+  const id=r.row,d=deliv&&deliv.id===id?deliv:null;
+  if(!d)return `<h4>납품</h4><div class="btns"><button class="b p" type="button" data-deliv="${id}">🚚 납품 완료</button></div>`;
+  const need=d.m==="택배"?"송장번호":d.m==="용달"?"용달 업체 이름":"";
+  return `<h4>납품 완료</h4><div class="form deliv">
+    <div class="btns">${["영업 직접","용달","택배"].map(m=>`<button class="b${d.m===m?" p":""}" type="button" data-dm="${m}" aria-pressed="${d.m===m}">${m}</button>`).join("")}</div>
+    ${need?`<label>${need}<input data-dinfo value="${esc(d.info||"")}" placeholder="${need}"></label>`:""}
+    ${d.m?`<div class="confirm"><span>'끝'(납품 완료 · ${esc(d.m)})으로 넘길까?</span><button class="b p" type="button" data-dok="${id}">납품 완료로 넘기기</button><button class="b" type="button" data-dcancel>취소</button></div>`:`<div class="btns"><span class="muted">어떻게 보냈는지 골라 줘.</span><button class="b" type="button" data-dcancel>취소</button></div>`}
+  </div>`;
 }
 // 서랍 안 목록: 스크롤 대신 한 화면에 들어가는 만큼만 보이고 '다음 ▶'으로 넘김
 function paginate(){
@@ -514,7 +527,7 @@ function onData(d){
   if(!firstLoad){const c=Object.keys(sig).filter(k=>prevSig[k]!==sig[k]);if(c.length){changed=new Set(c);clearTimeout(onData.h);onData.h=setTimeout(()=>{changed.clear();render()},15000)}}
   prevSig=sig;firstLoad=false;data=d;lastOk=Date.now();
   // 사람이 칸을 고치는 중이면 화면을 다시 그리지 않음
-  const a=document.activeElement;if(a&&a.matches&&a.matches(".edit input, .form input"))return;
+  const a=document.activeElement;if(a&&a.matches&&a.matches(".edit input, .form input, [data-dinfo]"))return;
   render();
 }
 async function load(){
@@ -578,6 +591,14 @@ $("list").addEventListener("click",e=>{
   const c=e.target.closest("button[data-close]");if(c){openRow=null;editing=null;histOpen=null;render();return}
   const ln=e.target.closest(".line[data-open]");if(ln&&!e.target.closest("button")){const id=+ln.dataset.open;openRow=openRow===id?null:id;editing=null;histOpen=null;render();return}
   const dt=e.target.closest("button[data-detail]");if(dt){const id=+dt.dataset.detail;detailOpen=detailOpen===id?null:id;pendingMove=null;render();return}
+  const dv=e.target.closest("button[data-deliv]");if(dv){deliv={id:+dv.dataset.deliv,m:"",info:""};pendingMove=null;render();return}
+  const dm=e.target.closest("button[data-dm]");if(dm&&deliv){deliv.m=dm.dataset.dm;deliv.info="";render();return}
+  if(e.target.closest("button[data-dcancel]")){deliv=null;render();return}
+  const dk=e.target.closest("button[data-dok]");if(dk&&deliv){const d=deliv,r=data.rows.find(x=>x.row===d.id);if(!r)return;
+    const inp=document.querySelector("[data-dinfo]");d.info=inp?inp.value.trim():"";
+    if(d.m==="택배"&&!d.info){toast("송장번호를 넣어 줘.");return}if(d.m==="용달"&&!d.info){toast("용달 업체 이름을 넣어 줘.");return}
+    if(dk.disabled)return;dk.disabled=true;dk.textContent="저장 중…";deliv=null;
+    save(r.row,{step:DONE,detail:{where:d.m+(d.info?(d.m==="택배"?" 송장 ":" ")+d.info:""),what:"납품 완료(서류 대조 전)"}});return}
   const cc=e.target.closest("button[data-cancel]");if(cc){pendingMove=null;render();return}
   const ok=e.target.closest("button[data-ok]");if(ok){const pm=pendingMove,r=pm&&data.rows.find(x=>x.row===pm.id);if(!r||stepOf(r)!==pm.from){pendingMove=null;render();return}if(ok.disabled)return;ok.disabled=true;ok.textContent="저장 중…";pendingMove=null;save(r.row,{step:pm.to});return}
   const sh=e.target.closest("button[data-show]");if(sh){const id=+sh.dataset.show;openRow=openRow===id?null:id;detailOpen=null;pendingMove=null;editing=null;histOpen=null;render();return}
