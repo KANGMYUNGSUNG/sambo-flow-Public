@@ -196,7 +196,7 @@ body{font-size:1rem}
   body{overflow:hidden;padding-block:.8rem}
   .wrap{height:100%;display:flex;flex-direction:column;gap:.6rem}
   .wrap>*{flex:none}
-  .wrap>.lanes{flex:1 1 0;grid-template-rows:repeat(4,minmax(0,1fr));min-height:0}
+  .wrap>.lanes{flex:1 1 0;grid-template-rows:repeat(3,minmax(0,1fr));min-height:0}
   .lane{min-height:0}
   .row{flex-wrap:nowrap;min-height:0}
   .step{min-height:0;overflow:hidden;align-content:center;padding:.35rem .6rem}
@@ -261,10 +261,10 @@ body{font-size:1rem}
     <div class="dhead"><button type="button" class="back" id="dBack">← 뒤로</button><h2 id="dTitle">건별 현황</h2><button type="button" class="b" id="dClose">닫기 ✕</button></div>
     <div class="dsum" id="dSum" hidden></div>
     <div class="bar">
-      <select id="fLane" aria-label="부서"><option value="">부서 전체</option><option value="sales">영업</option><option value="design">디자인</option><option value="factory">공장</option><option value="admin">관리부서</option></select>
+      <select id="fLane" aria-label="부서"><option value="">부서 전체</option><option value="sales">영업</option><option value="design">디자인</option><option value="factory">공장</option></select>
       <select id="fSales" aria-label="영업 담당"><option value="">영업 담당 전체</option><option>강명성</option><option>김지열</option><option>박인규</option><option>담당 확인</option></select>
       <select id="fClient" aria-label="거래처"><option value="">거래처 전체</option></select>
-      <select id="fDone" aria-label="진행 상태"><option value="open">진행 중만</option><option value="all">끝난 건 포함</option><option value="done">끝난 건만</option></select>
+      <select id="fDone" aria-label="진행 상태"><option value="open">진행 중만</option><option value="arch">📦 보관함 (서류 확인 전)</option></select>
       <button type="button" class="b p" id="addBtn">+ 새 건</button>
     </div>
     <form class="form" id="addForm" hidden>
@@ -285,16 +285,18 @@ body{font-size:1rem}
 </div>
 <div class="toast" id="toast" role="status" hidden></div>
 <script>
-const LANES=[{k:"sales",name:"영업",sub:"강명성·김지열·박인규"},{k:"design",name:"디자인",sub:"디자인팀"},{k:"factory",name:"공장",sub:"생산·외주"},{k:"admin",name:"관리부서",sub:"경리"}];
+const LANES=[{k:"sales",name:"영업",sub:"강명성·김지열·박인규"},{k:"design",name:"디자인",sub:"디자인팀"},{k:"factory",name:"공장",sub:"생산·외주"}];
 const STEPS=[
   ["sales","견적 요청 받음","거래처 메일"],["sales","견적 보냄","견적서·회신"],["sales","제작 요청·접수","접수대장 번호"],
   ["design","디자인 요청","컨셉·납품일 상의"],["design","편집 작업","인디자인"],["design","거래처 컨펌","시안·수정"],["design","최종 파일 전달","인쇄용 파일"],
-  ["factory","작업지시서·발주","용지·코팅 발주"],["factory","CTP 출력","사내·외주 출력소 (팩스)"],["factory","인쇄","표지·내지",1],["factory","코팅·후가공","외주",1],["factory","제본","인수증·입고증",1],["factory","납품","용달",1],
-  ["admin","거래명세표","월 1회"],["admin","계산서 확인 메일","거래처 확답"],["admin","세금계산서 발행","경리 홈택스"],["admin","입금 확인","통장 대조"]
+  ["factory","작업지시서·발주","용지·코팅 발주"],["factory","CTP 출력","사내·외주 출력소 (팩스)"],["factory","인쇄","표지·내지 (CIP)"],["factory","인쇄 끝 · 후가공/납품 중","계산서·납품 서류 확인되면 끝"]
 ].map(([lane,l,t,check])=>({lane,l,t,check,key:`${{sales:"영업",design:"디자인",factory:"공장",admin:"관리"}[lane]}-${l}`}));
 const SK=Object.fromEntries(STEPS.map(s=>[s.key,s]));
 const STEP_IDX=Object.fromEntries(STEPS.map((s,i)=>[s.key,i]));
 const DONE="끝";
+// 간소화(무옥님 10/5 21:15): 실시간 근거가 있는 건 디자인(메일)·인쇄(CIP)까지. 인쇄 뒤(코팅·후가공·제본·납품·관리)는 한 칸으로 묶음
+const AFTER="공장-인쇄 끝 · 후가공/납품 중",AFTER_OLD=["공장-코팅·후가공","공장-제본","공장-납품","관리-거래명세표","관리-계산서 확인 메일","관리-세금계산서 발행","관리-입금 확인"];
+const ARCH_DAYS=7; // 인쇄 끝 칸에 이 날수 넘게 있으면 첫 화면에서 빠져 📦보관함('서류 확인 전')으로(지우지 않음)
 const P=["영업-견적 요청 받음","영업-견적 보냄","영업-제작 요청·접수"],F=STEPS.filter(s=>s.lane==="factory"||s.lane==="admin").map(s=>s.key);
 const ORDER={print:[...P,...F,DONE],design:["디자인-디자인 요청","디자인-편집 작업","디자인-거래처 컨펌","영업-견적 보냄","디자인-최종 파일 전달","영업-제작 요청·접수",...F,DONE]};
 const BY="흐름표 화면"; // 이름 고르기 없앰(무옥님 10/5) — 바꾼 사람 칸엔 이 글자
@@ -351,7 +353,17 @@ let openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,pag
 // 고르기 칸은 기억하지 않음: 서랍을 열 때마다 늘 전체로 시작(무옥님 10/5 "거르기 풀기 필요 없으면 빼")
 const rowKey=r=>(r.no||"")+"|"+r.item;
 const kindOf=r=>(r.kind||"").includes("디자인")?"design":"print";
-const stepOf=r=>{const s=(r.step||"").trim();if(!s)return kindOf(r)==="design"?"디자인-디자인 요청":"영업-견적 요청 받음";return s};
+const normStep=s=>AFTER_OLD.includes(s)?AFTER:s;
+const stepOf=r=>{const s=(r.step||"").trim();if(!s)return kindOf(r)==="design"?"디자인-디자인 요청":"영업-견적 요청 받음";return normStep(s)};
+// 'MM-dd HH:mm'(해 없음) 또는 'yyyy-MM-dd' → 날짜. 앞날이 되면 작년으로
+function atDate(t){t=String(t||"");let m=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);const now=new Date();if(m)return new Date(+m[1],m[2]-1,+m[3]);
+  m=t.match(/^(\d{1,2})-(\d{1,2})/);if(!m)return null;let d=new Date(now.getFullYear(),m[1]-1,+m[2]);if(d>now)d=new Date(now.getFullYear()-1,m[1]-1,+m[2]);return d}
+// 인쇄 끝 칸에 들어온 때: 지나온 일 중 마지막으로 그 칸이 된 줄, 없으면 바꾼 날짜
+const afterAt=r=>{const l=(r.log||[]).filter(x=>normStep(x.step)===AFTER);return (l.length?l[l.length-1].at:"")||r.at||""};
+// '납품 완료' 버튼으로 끝냈지만 서류 대조 전 → 보관함에 남김. 계산서 등 서류로 '끝'이 된 줄은 화면에서 사라짐(시트엔 남음, 무옥님 10/5 21:17)
+const isPend=r=>{if(stepOf(r)!==DONE)return false;const l=r.log||[];return /서류 대조 전/.test((l[l.length-1]||{}).what||"")};
+const isGone=r=>stepOf(r)===DONE&&!isPend(r);
+const isArch=r=>{if(isPend(r))return true;if(stepOf(r)!==AFTER)return false;const d=atDate(afterAt(r));return !!d&&(Date.now()-d)/864e5>=ARCH_DAYS};
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{el.hidden=true},3500)}
 
 // 단계 칸 안에 거래처 이름 칩(같은 거래처는 ×건수), 4개 넘으면 +n
@@ -359,11 +371,13 @@ function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTime
 // 디티피아는 주문이 많아 묶음 1건으로 셈(무옥님 10/5 "디티피아 건은 토탈로 한 건"). 펼친 목록엔 개별 건 그대로
 const isDt=r=>/디티피아/.test(r.client||"");
 const units=list=>list.filter(r=>!isDt(r)).length+(list.some(isDt)?1:0);
-function jobsHtml(list){
+function jobsHtml(list,key){
   if(!list||!list.length)return "";
+  let extra=0;
+  if(key===AFTER){const t=units(list);list=[...list].sort((a,b)=>String(afterAt(b)).localeCompare(String(afterAt(a)))).slice(0,3);extra=t-units(list)} // 최근 3건만, 나머지는 '+n건 더'
   const dt=list.filter(isDt),rest=list.filter(r=>!isDt(r));
   const dtLine=dt.length?`<span data-job="${[...dt].sort(byOld)[0].row}" title="디티피아 ${dt.length}건 묶음"><b>디티피아</b>${dt.length}건 묶음</span>`:"";
-  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`;
+  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`.replace('<span class="jl">',`<span class="jl" data-extra="${extra}">`);
 }
 // 칸 높이에 맞게 줄 수 자르기(스크롤 없음). 폰은 칸마다 3줄까지
 function fitSteps(){
@@ -372,7 +386,8 @@ function fitSteps(){
     const items=[...jl.querySelectorAll("[data-job]")],more=jl.querySelector(".more");
     items.forEach(x=>x.hidden=false);more.hidden=true;
     let shown=phone?Math.min(3,items.length):items.length;
-    const apply=()=>{items.forEach((x,i)=>x.hidden=i>=shown);const rest=items.length-shown;more.hidden=!rest;more.textContent=rest?`+${rest}건 더`:""};
+    const ex=+(jl.dataset.extra||0);
+    const apply=()=>{items.forEach((x,i)=>x.hidden=i>=shown);const rest=items.length-shown+ex;more.hidden=!rest;more.textContent=rest?`+${rest}건 더`:""};
     apply();if(!phone)while(shown>0&&st.scrollHeight>st.clientHeight+1){shown--;apply()}
   });
 }
@@ -405,20 +420,20 @@ function renderDaily(){
   el.hidden=false;
 }
 function render(){
-  const rows=data?.rows||[];
+  const all=(data?.rows||[]).filter(r=>!isGone(r)),arch=all.filter(isArch),rows=all.filter(r=>!isArch(r));
   renderDaily();
   const by={};rows.forEach(r=>{const s=stepOf(r);(by[s]=by[s]||[]).push(r)});
   const counts={};Object.keys(by).forEach(s=>{counts[s]=units(by[s])});
   fillClients(rows);
   $("lanes").innerHTML=LANES.map(L=>`<div class="lane" data-l="${L.k}"><div class="lane-name">${L.name}<small>${L.sub}</small></div>
-    <div class="row">${STEPS.filter(s=>s.lane===L.k).map((s,i,a)=>{const n=counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(by[s.key])}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
+    <div class="row">${STEPS.filter(s=>s.lane===L.k).map((s,i,a)=>{const n=counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
   requestAnimationFrame(fitSteps);
   const open=rows.filter(r=>stepOf(r)!==DONE),late=open.filter(r=>r.due&&r.due<today());
   const byLane=k=>units(open.filter(r=>SK[stepOf(r)]?.lane===k));
-  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late" data-k="late"><b>${units(late)}</b>납품일 지남</button><button type="button" class="kpi" data-k="done"><b>${units(rows.filter(r=>stepOf(r)===DONE))}</b>끝</button>`;
+  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late" data-k="late"><b>${units(late)}</b>납품일 지남</button><button type="button" class="kpi" data-k="arch"><b>${units(arch)}</b>📦 보관함</button>`;
   $("openList").textContent=`건별 현황 보기 (${units(open)})`;
   const lane=$("fLane").value,sales=$("fSales").value,dn=$("fDone").value;const client=$("fClient").value;
-  const view=rows.filter(r=>{const s=stepOf(r),fin=s===DONE;
+  const view=(dn==="arch"?arch:rows).filter(r=>{const s=stepOf(r),fin=s===DONE;
     if(fStep)return s===fStep;
     if(fLate)return !fin&&r.due&&r.due<today();
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
@@ -433,7 +448,7 @@ function render(){
     sumEl.innerHTML=steps.length?`<span class="lbl">지금 하는 일</span>`+steps.map(x=>`<button type="button" data-sum="${esc(x)}">${SK[x]?`${laneName(SK[x].lane)} · ${SK[x].l}`:esc(x)}<b>${cnt[x]}</b></button>`).join(""):"";
     sumEl.hidden=!steps.length;
   }else if(!stepFromSum){sumEl.hidden=true}
-  $("dTitle").textContent=fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:`건별 현황 (${view.length}건)`;
+  $("dTitle").textContent=fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
   if(!data){$("list").innerHTML=`<div class="empty">불러오는 중…</div>`;return}
   if(!view.length){$("list").innerHTML=`<div class="empty">${rows.length?"조건에 맞는 건이 없어.":"아직 등록된 건이 없어. '+ 새 건'으로 넣어 봐."}</div>`;return}
   $("list").innerHTML=view.map(r=>{
@@ -442,7 +457,7 @@ function render(){
     const nxt=i>=0&&!fin?ord[i+1]:null;
     const op=openRow===id,spec=itemsSum(r)||[r.qty?esc(r.qty)+"부":"",r.colors?esc(r.colors)+"도":""].filter(Boolean).join(" · ")||"부수 확인필요";
     return `<article class="card compact${op?" open":""}${changed.has(rowKey(r))?" changed flash":""}">
-      <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}</span><span class="sp" title="${esc(spec)}">${spec}${r.due?` · <b class="${isLate?"late":""}">납품 ${esc(r.due.slice(5))}</b>`:/해커스/.test(r.client||"")?" · 납품일 확인필요":""}</span><span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?"끝":known?esc(st.l):"단계 확인필요"}</span><button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
+      <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}</span><span class="sp" title="${esc(spec)}">${spec}${r.due?` · <b class="${isLate?"late":""}">납품 ${esc(r.due.slice(5))}</b>`:/해커스/.test(r.client||"")?" · 납품일 확인필요":""}${isArch(r)?` · <b>📦 ${isPend(r)?"납품 완료 "+esc(String(((r.log||[]).slice(-1)[0]||{}).at||"").slice(0,5)):"인쇄 끝 "+esc(String(afterAt(r)).slice(0,5))} · 서류 확인 전</b>`:""}</span><span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?(isPend(r)?"납품 완료 · 📦 서류 확인 전":"끝"):known?esc(st.l)+(isArch(r)?" · 📦 서류 확인 전":""):"단계 확인필요"}</span><button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
       ${op?`<div class="body">
       <div class="top">${r.no?`<span class="no">${esc(r.no)}</span>`:""}<span class="item">${esc(r.item)}</span></div>
       <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${esc(r.qty)}부</span>`:""}<span>${k==="design"?"디자인+인쇄":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
@@ -557,7 +572,7 @@ function tick(){
 }
 $("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fLate=false;pageStarts=[0];openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
 $("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;fStep=null;fLate=false;pageStarts=[0];
-  $("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value=k==="done"?"done":"open";
+  $("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value=k==="done"?"done":k==="arch"?"arch":"open";
   if(k.startsWith("lane:"))$("fLane").value=k.slice(5);if(k==="late")fLate=true;openDrawer()});
 $("openList").addEventListener("click",()=>{fStep=null;fLate=false;$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
 $("addTop").addEventListener("click",()=>{fStep=null;fLate=false;openDrawer();$("addForm").hidden=false;$("nItem").focus()});
