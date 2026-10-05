@@ -310,6 +310,8 @@ const stepName=k=>k===DONE?"끝":SK[k]?`${laneName(SK[k].lane)} · ${SK[k].l}`:k
 // 오래된 순서: 처음 기록된 날짜(지나온 일 첫 줄, 없으면 바꾼 날짜) → 같으면 접수번호(S 9-1이 S 9-2보다 먼저)
 const firstAt=r=>(r.log&&r.log[0]&&r.log[0].at)||r.at||"99-99";
 const noKey=r=>{const m=String(r.no||"").match(/(\d+)\s*-\s*(\d+)/);return m?(+m[1])*10000+(+m[2]):99999999};
+// 건별 현황: 영업공유 접수대장 순서(접수번호 오래된 것 위), 대장 번호 없는 견적 건은 그 뒤에 날짜순(무옥님 10/5 21:58)
+const byLedger=(a,b)=>(!a.no-!b.no)||(a.no&&b.no?noKey(a)-noKey(b):0)||String(firstAt(a)).localeCompare(String(firstAt(b)))||a.row-b.row;
 const byOld=(a,b)=>String(firstAt(a)).localeCompare(String(firstAt(b)))||noKey(a)-noKey(b)||a.row-b.row;
 const num=v=>{const n=parseFloat(String(v??"").replace(/,/g,""));return isFinite(n)?n:null};
 function itemsSum(r){const it=r.items||[];if(!it.length)return "";const d={};let q=0,y=0,qa=true,ya=true;
@@ -449,7 +451,7 @@ function render(){
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
     if(lane&&(fin||SK[s]?.lane!==lane))return false;
     if(sales&&(r.sales||"담당 확인")!==sales)return false;if(client&&(r.client||"거래처 미정")!==client)return false;return true})
-    .sort(byOld); // 늘 오래된 것부터 위로(무옥님 10/5 "날짜는 항상 오래된 순서부터")
+    .sort(byLedger); // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순
   // 진행 중 한눈에: 지금 어느 단계에 몇 건인지(흐름 순서대로) — 누르면 그 단계만
   const sumEl=$("dSum");
   if(!fStep&&!fLate&&dn!=="done"){
