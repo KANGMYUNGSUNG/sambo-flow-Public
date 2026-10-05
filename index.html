@@ -8,7 +8,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* 레이아웃: 위 = 영업·디자인·공장·관리 4줄 공정(칸마다 지금 건수, 건이 있으면 숨쉬는 점), 아래 = 건별 카드. 사무실 모니터에 띄워 두는 용도 */
+/* 레이아웃: 위 = 영업·디자인·공장 3줄 공정(칸마다 지금 건수, 건이 있으면 숨쉬는 점), 아래 = 건별 카드. 사무실 모니터에 띄워 두는 용도 */
 :root{
   --bg:#f5f6f7; --surface:#fff; --ink:#1b2128; --muted:#5d6974; --line:#dce1e6; --chip:#eef2f5;
   --accent:#0a7fa3; --warn:#b5531a; --done:#2f7d4f; --live:#21a366;
@@ -70,9 +70,9 @@ h2{font-size:1rem;margin:0}
 .bar select,.bar button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:7px;padding:5px 10px;cursor:pointer}
 .list{display:grid;gap:4px;grid-template-columns:1fr}
 /* 한 줄 목록(무옥님 10/5 "제작요청 칸이 너무 커, 한눈에"): 줄을 누르면 그 건만 자세히 펼침 */
-.line{display:grid;grid-template-columns:62px minmax(0,1fr) 92px 250px 118px auto;gap:8px;align-items:center;cursor:pointer;font-size:.92rem;min-height:30px}
+.line{display:grid;grid-template-columns:62px minmax(0,1fr) 150px 250px 118px auto;gap:8px;align-items:center;cursor:pointer;font-size:.92rem;min-height:30px}
 .line .no{font-size:.82rem}.line .it{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.line .cl,.line .sp{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.84rem}
+.line .sp{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.84rem}.line .cl{font-weight:700;font-size:.95rem;white-space:normal;word-break:keep-all}
 .line .now{font-size:.8rem;padding:1px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .line .b{padding:3px 9px;font-size:.82rem;white-space:nowrap}
 .card.compact{padding:2px 10px;gap:6px}.card.open{border-color:var(--accent)}
@@ -80,9 +80,9 @@ h2{font-size:1rem;margin:0}
 .items{width:100%;border-collapse:collapse;font-size:.84rem}.items th{color:var(--muted);font-weight:500;text-align:left}
 .items th,.items td{padding:2px 6px;border-bottom:1px solid var(--line)}.items td.n{text-align:right;font-family:var(--mono);white-space:nowrap}
 .items tfoot td{font-weight:700;border-bottom:0}
-@media (max-width:700px){ /* 폰: 윗줄 번호·품목·다음, 아랫줄 거래처·부수 (무옥님 폰으로 봄) */
-  .line{grid-template-columns:52px minmax(0,1fr) auto;grid-template-areas:"no it bt" "cl sp sp";row-gap:1px;padding:3px 0}
-  .line .no{grid-area:no}.line .it{grid-area:it}.line .b{grid-area:bt}.line .cl{grid-area:cl}.line .sp{grid-area:sp;white-space:normal}.line .now{display:none}
+@media (max-width:700px){ /* 폰: 윗줄 번호·거래처(안 자름)·자세히, 다음 줄 품목, 그다음 부수 (무옥님 10/5 21:45 "거래처 한눈에, 글씨 크게") */
+  .line{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"no cl bt" "it it it" "sp sp sp";row-gap:2px;padding:4px 0}
+  .line .no{grid-area:no}.line .it{grid-area:it}.line .b{grid-area:bt}.line .cl{grid-area:cl;white-space:normal;overflow:visible;font-size:18px;font-weight:700;color:var(--ink)}.line .it{font-size:20px;white-space:normal}.line .sp{grid-area:sp;white-space:normal}.line .now{display:none}
   .items{font-size:.8rem}}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:7px;min-width:0}
 .card.changed{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
@@ -301,7 +301,7 @@ const P=["영업-견적 요청 받음","영업-견적 보냄","영업-제작 요
 const ORDER={print:[...P,...F,DONE],design:["디자인-디자인 요청","디자인-편집 작업","디자인-거래처 컨펌","영업-견적 보냄","디자인-최종 파일 전달","영업-제작 요청·접수",...F,DONE]};
 const BY="흐름표 화면"; // 이름 고르기 없앰(무옥님 10/5) — 바꾼 사람 칸엔 이 글자
 const laneName=k=>LANES.find(L=>L.k===k).name;
-const stepName=k=>k===DONE?"끝":SK[k]?`${laneName(SK[k].lane)} · ${SK[k].l}`:(k||"단계 확인필요");
+const stepName=k=>k===DONE?"끝":SK[k]?`${laneName(SK[k].lane)} · ${SK[k].l}`:k?String(k).replace(/^(영업|디자인|공장|관리)-/,"$1 · "):"단계 확인필요";
 // 세부(디티피아 등 한 접수 안의 여러 일): 무슨 일·몇 도·몇 부·몇 연. 없으면 확인필요
 // 오래된 순서: 처음 기록된 날짜(지나온 일 첫 줄, 없으면 바꾼 날짜) → 같으면 접수번호(S 9-1이 S 9-2보다 먼저)
 const firstAt=r=>(r.log&&r.log[0]&&r.log[0].at)||r.at||"99-99";
@@ -359,7 +359,7 @@ const stepOf=r=>{const s=(r.step||"").trim();if(!s)return kindOf(r)==="design"?"
 function atDate(t){t=String(t||"");let m=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);const now=new Date();if(m)return new Date(+m[1],m[2]-1,+m[3]);
   m=t.match(/^(\d{1,2})-(\d{1,2})/);if(!m)return null;let d=new Date(now.getFullYear(),m[1]-1,+m[2]);if(d>now)d=new Date(now.getFullYear()-1,m[1]-1,+m[2]);return d}
 // 인쇄 끝 칸에 들어온 때: 지나온 일 중 마지막으로 그 칸이 된 줄, 없으면 바꾼 날짜
-const afterAt=r=>{const l=(r.log||[]).filter(x=>normStep(x.step)===AFTER);return (l.length?l[l.length-1].at:"")||r.at||""};
+const afterAt=r=>{const l=(r.log||[]).filter(x=>normStep(x.step)===AFTER&&!/^관리-/.test(x.step||""));return (l.length?l[l.length-1].at:"")||r.at||""};
 // '납품 완료' 버튼으로 끝냈지만 서류 대조 전 → 보관함에 남김. 계산서 등 서류로 '끝'이 된 줄은 화면에서 사라짐(시트엔 남음, 무옥님 10/5 21:17)
 const isPend=r=>{if(stepOf(r)!==DONE)return false;const l=r.log||[];return /서류 대조 전/.test((l[l.length-1]||{}).what||"")};
 const isGone=r=>stepOf(r)===DONE&&!isPend(r);
@@ -506,7 +506,7 @@ function detailHtml(r,ord,i,nxt,fin,k){
     ${itemsHtml(r)}
     <h4>지나온 일 · 근거</h4>
     ${(r.log||[]).length?`<ol class="dlog">${r.log.map(x=>`<li><b>${esc(stepName(x.step))}</b> <small>${esc(x.at)}</small><br>어디: ${esc(x.where||"확인필요")}<br>무엇: ${esc(x.what||"확인필요")}<br><small>출처: ${esc(x.by||"확인필요")}</small></li>`).join("")}</ol>`:`<p class="muted">기록 없음(확인필요)</p>`}
-    ${fin?"":delivHtml(r)}
+    ${fin||/^영업-견적/.test(stepOf(r))?"":delivHtml(r)}
     <h4>단계 바꾸기</h4>
     ${pm?`<div class="confirm"><span>'${esc(nm(pm.to))}' 단계로 ${pm.dir==="next"?"넘길까":"되돌릴까"}?</span><button class="b p" type="button" data-ok="${id}">${pm.dir==="next"?"넘기기":"되돌리기"}</button><button class="b" type="button" data-cancel="${id}">취소</button></div>`
     :`<div class="btns"><button class="b" type="button" data-act="prev" data-id="${id}" ${!prv?"disabled":""}>이전 단계로</button><button class="b p" type="button" data-act="next" data-id="${id}" ${!nxt?"disabled":""}>${nxt?`다음 단계: ${nxt===DONE?"끝":SK[nxt].l}`:"끝"}</button></div>`}
@@ -516,11 +516,11 @@ function detailHtml(r,ord,i,nxt,fin,k){
 function delivHtml(r){
   const id=r.row,d=deliv&&deliv.id===id?deliv:null;
   if(!d)return `<h4>납품</h4><div class="btns"><button class="b p" type="button" data-deliv="${id}">🚚 납품 완료</button></div>`;
-  const need=d.m==="택배"?"송장번호":d.m==="용달"?"용달 업체 이름":"";
+  const need=d.m==="택배"?"송장번호":""; // 용달 업체 이름 칸은 뺌(무옥님 10/5 21:40)
   return `<h4>납품 완료</h4><div class="form deliv">
     <div class="btns">${["영업 직접","용달","택배"].map(m=>`<button class="b${d.m===m?" p":""}" type="button" data-dm="${m}" aria-pressed="${d.m===m}">${m}</button>`).join("")}</div>
     ${need?`<label>${need}<input data-dinfo value="${esc(d.info||"")}" placeholder="${need}"></label>`:""}
-    ${d.m?`<div class="confirm"><span>'끝'(납품 완료 · ${esc(d.m)})으로 넘길까?</span><button class="b p" type="button" data-dok="${id}">납품 완료로 넘기기</button><button class="b" type="button" data-dcancel>취소</button></div>`:`<div class="btns"><span class="muted">어떻게 보냈는지 골라 줘.</span><button class="b" type="button" data-dcancel>취소</button></div>`}
+    ${d.m?`<div class="confirm"><span>'끝'(납품 완료 · ${esc(d.m)})으로 넘길까? 넘기면 진행 중 목록에서 빠지고 📦 보관함으로 가.</span><button class="b p" type="button" data-dok="${id}">납품 완료로 넘기기</button><button class="b" type="button" data-dcancel>취소</button></div>`:`<div class="btns"><span class="muted">어떻게 보냈는지 골라 줘.</span><button class="b" type="button" data-dcancel>취소</button></div>`}
   </div>`;
 }
 // 서랍 안 목록: 스크롤 대신 한 화면에 들어가는 만큼만 보이고 '다음 ▶'으로 넘김
@@ -615,7 +615,7 @@ $("list").addEventListener("click",e=>{
   if(e.target.closest("button[data-dcancel]")){deliv=null;render();return}
   const dk=e.target.closest("button[data-dok]");if(dk&&deliv){const d=deliv,r=data.rows.find(x=>x.row===d.id);if(!r)return;
     const inp=document.querySelector("[data-dinfo]");d.info=inp?inp.value.trim():"";
-    if(d.m==="택배"&&!d.info){toast("송장번호를 넣어 줘.");return}if(d.m==="용달"&&!d.info){toast("용달 업체 이름을 넣어 줘.");return}
+    if(d.m==="택배"&&!d.info){toast("송장번호를 넣어 줘.");return}
     if(dk.disabled)return;dk.disabled=true;dk.textContent="저장 중…";deliv=null;
     save(r.row,{step:DONE,detail:{where:d.m+(d.info?(d.m==="택배"?" 송장 ":" ")+d.info:""),what:"납품 완료(서류 대조 전)"}});return}
   const cc=e.target.closest("button[data-cancel]");if(cc){pendingMove=null;render();return}
