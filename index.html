@@ -36,6 +36,18 @@ h2{font-size:1rem;margin:0}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:.82rem;color:var(--muted)}
 .kpi b{font-family:var(--mono);font-size:1.15rem;color:var(--ink);margin-right:4px;font-variant-numeric:tabular-nums}
 .kpi.late b{color:var(--warn)}
+.kpi.alarm{background:var(--late-bg);border-color:var(--late)}.kpi.alarm b{color:var(--late)}
+.kpi.stale{background:var(--stale-bg);border-color:var(--stale)}
+:root{--late:#e5484d;--late-bg:#fdecec;--stale:#d99a00;--stale-bg:#fff6d9;--ok:#2f9e5f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--late-bg:#3a1d1f;--stale-bg:#3a3014}}
+:root[data-theme="dark"]{--late-bg:#3a1d1f;--stale-bg:#3a3014}
+.wk{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline;font-size:.82rem;color:var(--muted);padding:6px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.wk b{color:var(--ink);font-family:var(--mono);font-size:1.05rem}.wk span{white-space:nowrap}
+.legend{font-size:.78rem;color:var(--muted);margin:2px 0 -4px}.legend i{font-style:normal;margin-right:10px}
+.legend i{white-space:nowrap}.legend .r{color:var(--late)}.legend .y{color:var(--stale)}.legend .g{color:var(--ok)}
+.step .jl span.c-late{box-shadow:inset 4px 0 0 var(--late);padding-left:8px}
+.step .jl span.c-stale{box-shadow:inset 4px 0 0 var(--stale);padding-left:8px}
+.step .jl span.c-ok{box-shadow:inset 4px 0 0 var(--ok);padding-left:8px}
 
 .lanes{display:grid;gap:8px}
 .lane{display:grid;grid-template-columns:92px minmax(0,1fr);gap:8px}
@@ -266,12 +278,14 @@ body{font-size:1rem}
   <div class="mock" id="mock" hidden>미리보기 화면이야. 예시 건은 진짜가 아니고 저장도 안 돼.</div>
   <div class="crow">
     <div class="kpis" id="kpis"></div>
+    <div id="wk"></div>
     <span class="topact"><button type="button" class="b" id="openList">건별 현황 보기</button><button type="button" class="b p" id="addTop">+ 새 건</button></span>
   </div>
 
 
   <section class="daily" id="daily" hidden aria-label="오늘 저녁 일량"></section>
 
+  <p class="legend">건마다 왼쪽 색 줄: <i class="r">● 납품일 지남</i><i class="y">● 7일째 그대로</i><i class="g">● 순조</i></p>
   <section class="lanes" id="lanes" aria-label="공정 흐름"></section>
 
   <div class="shade" id="shade" hidden></div>
@@ -372,7 +386,7 @@ function call(fn,...args){
   return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args));
 }
 
-let dtOpen=false,openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
+let dtOpen=false,openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,fStale=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
 // 고르기 칸은 기억하지 않음: 서랍을 열 때마다 늘 전체로 시작(무옥님 10/5 "거르기 풀기 필요 없으면 빼")
 const rowKey=r=>(r.no||"")+"|"+r.item;
 const kindOf=r=>/^공장-와우/.test(r.step||"")||/와우/.test(r.kind||"")?"wow":(r.kind||"").includes("디자인")?"design":"print";
@@ -401,6 +415,15 @@ const isPend=r=>{if(stepOf(r)!==DONE)return false;const l=r.log||[];return /서�
 const isGone=r=>stepOf(r)===DONE&&!isPend(r);
 const wowOutAt=r=>{const l=(r.log||[]).filter(x=>x.step==="공장-와우 출고");return (l.length?l[l.length-1].at:"")||r.at||""};
 const isArch=r=>{if(isPend(r))return true;if(stepOf(r)==="공장-와우 출고"){const d=atDate(wowOutAt(r));return !!d&&(Date.now()-d)/864e5>=ARCH_DAYS}if(stepOf(r)!==AFTER)return false;const d=atDate(afterAt(r));return !!d&&(Date.now()-d)/864e5>=ARCH_DAYS};
+// 4기법(무옥님 10/6 시안4): 납품일 지남 빨강 · 같은 단계 7일째 그대로 노랑 · 순조 초록
+const lastMd=r=>{const l=(r.log||[]).filter(x=>!/^(도수|사이즈) /.test(x.what||""));const a=String((l.length?l[l.length-1].at:r.at)||"").slice(0,5);return /^\d\d-\d\d$/.test(a)?a:""};
+const isLateR=r=>stepOf(r)!==DONE&&!!r.due&&r.due<today();
+const isStale=r=>{if(stepOf(r)===DONE||isArch(r))return false;const a=ageOf(lastMd(r));return a!=null&&a>=7};
+const colorOf=r=>isLateR(r)?"c-late":isStale(r)?"c-stale":"c-ok";
+const weekLine=all=>{const n=new Date(),wd=(n.getDay()+6)%7;const inW=md=>{const a=ageOf(String(md||"").slice(0,5));return a!=null&&a<=wd};
+  const got=all.filter(r=>{const l=r.log||[];return l.length&&inW(l[0].at)}).length;
+  const done=all.filter(r=>(r.log||[]).some(x=>normStep(x.step)===DONE&&inW(x.at))).length;
+  return `<div class="wk">📈 이번 주 <span>들어온 일 <b>${got}</b></span><span>끝낸 일 <b>${done}</b></span><span>지난주 —</span></div>`};
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{el.hidden=true},3500)}
 
 // 단계 칸 안에 거래처 이름 칩(같은 거래처는 ×건수), 4개 넘으면 +n
@@ -417,8 +440,8 @@ function jobsHtml(list,key){
   let extra=0;
   if(key===AFTER){const t=units(list);list=[...list].sort((a,b)=>String(afterAt(b)).localeCompare(String(afterAt(a)))).slice(0,3);extra=t-units(list)} // 최근 3건만, 나머지는 '+n건 더'
   const dt=list.filter(isDt),rest=list.filter(r=>!isDt(r));
-  const dtLine=dt.length?`<span data-job="${[...dt].sort(byOld)[0].row}" title="디티피아 ${dt.length}건 묶음"><b>디티피아</b>${dt.length}건 묶음</span>`:"";
-  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${key===WOWCELL.key?`<i class="ws">${esc(SK[stepOf(r)]?.l.replace("외주 ","")||"")}</i> `:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`.replace('<span class="jl">',`<span class="jl" data-extra="${extra}">`);
+  const dtLine=dt.length?`<span class="${dt.some(isLateR)?"c-late":dt.some(isStale)?"c-stale":"c-ok"}" data-job="${[...dt].sort(byOld)[0].row}" title="디티피아 ${dt.length}건 묶음"><b>디티피아</b>${dt.length}건 묶음</span>`:"";
+  return `<span class="jl">${dtLine}${[...rest].sort(byOld).slice(0,40).map(r=>`<span class="${colorOf(r)}" data-job="${r.row}" title="${esc((r.no?r.no+" ":"")+r.item+" · "+(r.client||""))}">${r.no?`<b>${esc(String(r.no).replace(/^S\s*/,""))}</b>`:""}${key===WOWCELL.key?`<i class="ws">${esc(SK[stepOf(r)]?.l.replace("외주 ","")||"")}</i> `:""}${esc(r.item)}</span>`).join("")}<span class="more" hidden></span></span>`.replace('<span class="jl">',`<span class="jl" data-extra="${extra}">`);
 }
 // 칸 높이에 맞게 줄 수 자르기(스크롤 없음). 폰은 칸마다 3줄까지
 function fitSteps(){
@@ -475,27 +498,29 @@ function render(){
   $("lanes").innerHTML=LANES.map(L=>`<div class="lane" data-l="${L.k}"><div class="lane-name">${L.name}<small>${L.sub}</small></div>
     <div class="row">${[...STEPS.filter(s=>s.lane===L.k&&!W.includes(s.key)),...(L.k==="factory"&&wowList.length?[WOWCELL]:[])].map((s,i,a)=>{const n=s===WOWCELL?units(wowList):counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(s===WOWCELL?wowList:by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
   requestAnimationFrame(fitSteps);
-  const open=rows.filter(r=>stepOf(r)!==DONE),late=open.filter(r=>r.due&&r.due<today());
+  const open=rows.filter(r=>stepOf(r)!==DONE),late=open.filter(r=>r.due&&r.due<today()),stale=open.filter(isStale);
   const byLane=k=>units(open.filter(r=>SK[stepOf(r)]?.lane===k));
-  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late" data-k="late"><b>${units(late)}</b>납품일 지남</button><button type="button" class="kpi" data-k="arch"><b>${units(arch)}</b>📦 보관함</button>`;
+  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late${late.length?" alarm":""}" data-k="late"><b>${units(late)}</b>납품일 지남</button><button type="button" class="kpi${stale.length?" stale":""}" data-k="stale"><b>${units(stale)}</b>7일째 그대로</button><button type="button" class="kpi" data-k="arch"><b>${units(arch)}</b>📦 보관함</button>`;
+  $("wk").innerHTML=weekLine(data?.rows||[]);
   $("openList").textContent=`건별 현황 보기 (${units(open)})`;
   const lane=$("fLane").value,sales=$("fSales").value,dn=$("fDone").value;const client=$("fClient").value;
   const view=(dn==="arch"?arch:rows).filter(r=>{const s=stepOf(r),fin=s===DONE;
     if(fStep)return fStep===WOWCELL.key?W.includes(s):s===fStep;
     if(fLate)return !fin&&r.due&&r.due<today();
+    if(fStale)return isStale(r);
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
     if(lane&&(fin||SK[s]?.lane!==lane))return false;
     if(sales&&(r.sales||"담당 확인")!==sales)return false;if(client&&(r.client||"거래처 미정")!==client)return false;return true})
     .sort(byLedger); // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순
   // 진행 중 한눈에: 지금 어느 단계에 몇 건인지(흐름 순서대로) — 누르면 그 단계만
   const sumEl=$("dSum");
-  if(!fStep&&!fLate&&dn!=="done"){
+  if(!fStep&&!fLate&&!fStale&&dn!=="done"){
     const grp={};view.forEach(r=>{const s=stepOf(r);if(s!==DONE)(grp[s]=grp[s]||[]).push(r)});const cnt={};Object.keys(grp).forEach(s=>{cnt[s]=units(grp[s])});
     const steps=Object.keys(cnt).sort((a,b)=>(STEP_IDX[a]??999)-(STEP_IDX[b]??999));
     sumEl.innerHTML=steps.length?`<span class="lbl">지금 하는 일</span>`+steps.map(x=>`<button type="button" data-sum="${esc(x)}">${SK[x]?`${laneName(SK[x].lane)} · ${SK[x].l}`:esc(x)}<b>${cnt[x]}</b></button>`).join(""):"";
     sumEl.hidden=!steps.length;
   }else if(!stepFromSum){sumEl.hidden=true}
-  $("dTitle").textContent=fStep===WOWCELL.key?`공장 · ${WOWCELL.l} (${view.length}건)`:fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
+  $("dTitle").textContent=fStep===WOWCELL.key?`공장 · ${WOWCELL.l} (${view.length}건)`:fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:fStale?`7일째 그대로 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
   if(!data){$("list").innerHTML=`<div class="empty">불러오는 중…</div>`;return}
   if(!view.length){$("list").innerHTML=`<div class="empty">${rows.length?"조건에 맞는 건이 없어.":"아직 등록된 건이 없어. '+ 새 건'으로 넣어 봐."}</div>`;return}
   $("list").innerHTML=view.map(r=>{
@@ -581,7 +606,7 @@ function paginate(){
 }
 function gotoOpen(){for(let k=0;k<20;k++){const c=document.querySelector("#list .card.open");if(!c||!c.hidden)return;if($("pgNext").disabled)return;pageStarts.push(+$("pgNext").dataset.next||0);render()}}
 function openDrawer(){if($("drawer").hidden){pageStarts=[0]}$("drawer").hidden=false;$("shade").hidden=false;render()}
-function closeDrawer(){openRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;pageStarts=[0];render()}
+function closeDrawer(){openRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;fStale=false;pageStarts=[0];render()}
 function onData(d){
   const sig={};(d.rows||[]).forEach(r=>{const {row,...rest}=r;sig[rowKey(r)]=JSON.stringify(rest)});
   if(!firstLoad){const c=Object.keys(sig).filter(k=>prevSig[k]!==sig[k]);if(c.length){changed=new Set(c);clearTimeout(onData.h);onData.h=setTimeout(()=>{changed.clear();render()},15000)}}
@@ -615,12 +640,12 @@ function tick(){
   $("dot").classList.toggle("stale",stale);
   $("liveTxt").textContent=stale?`연결 끊김 (${ago}초째) · 인터넷 확인`:`실시간 · ${ago}초 전 확인`;
 }
-$("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fLate=false;pageStarts=[0];openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
-$("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;fStep=null;fLate=false;pageStarts=[0];
+$("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fLate=false;fStale=false;pageStarts=[0];openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
+$("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;fStep=null;fLate=false;fStale=false;pageStarts=[0];
   $("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value=k==="done"?"done":k==="arch"?"arch":"open";
-  if(k.startsWith("lane:"))$("fLane").value=k.slice(5);if(k==="late")fLate=true;openDrawer()});
-$("openList").addEventListener("click",()=>{fStep=null;fLate=false;$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
-$("addTop").addEventListener("click",()=>{fStep=null;fLate=false;openDrawer();$("addForm").hidden=false;$("nItem").focus()});
+  if(k.startsWith("lane:"))$("fLane").value=k.slice(5);if(k==="late")fLate=true;if(k==="stale")fStale=true;openDrawer()});
+$("openList").addEventListener("click",()=>{fStep=null;fLate=false;fStale=false;$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
+$("addTop").addEventListener("click",()=>{fStep=null;fLate=false;fStale=false;openDrawer();$("addForm").hidden=false;$("nItem").focus()});
 $("dClose").addEventListener("click",closeDrawer);$("shade").addEventListener("click",closeDrawer);
 $("dBack").addEventListener("click",()=>{if(pageStarts.length>1){pageStarts.pop();render()}else if(stepFromSum){fStep=null;stepFromSum=false;pageStarts=[0];render()}else closeDrawer()});
 $("dSum").addEventListener("click",e=>{const b=e.target.closest("button[data-sum]");if(!b)return;fStep=b.dataset.sum;stepFromSum=true;pageStarts=[0];$("dSum").hidden=true;render()});
@@ -636,7 +661,7 @@ $("pgNext").addEventListener("click",()=>{pageStarts.push(+$("pgNext").dataset.n
 $("pgPrev").addEventListener("click",()=>{if(pageStarts.length>1)pageStarts.pop();render()});
 $("daily").addEventListener("toggle",e=>{if(e.target.id==="dailyMore")dailyOpen=e.target.open;if(e.target.id==="dtList")dtOpen=e.target.open},true);
 window.addEventListener("resize",()=>{if(!$("drawer").hidden)render();else fitSteps()});
-["fLane","fSales","fClient","fDone"].forEach(id=>$(id).addEventListener("change",()=>{fStep=null;fLate=false;pageStarts=[0];render()}));
+["fLane","fSales","fClient","fDone"].forEach(id=>$(id).addEventListener("change",()=>{fStep=null;fLate=false;fStale=false;pageStarts=[0];render()}));
 $("addBtn").addEventListener("click",()=>{$("addForm").hidden=!$("addForm").hidden;if(!$("addForm").hidden)$("nItem").focus();paginate()});
 $("addCancel").addEventListener("click",()=>{$("addForm").hidden=true});
 $("addForm").addEventListener("submit",async e=>{
