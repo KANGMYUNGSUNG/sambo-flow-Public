@@ -165,7 +165,7 @@ details.more summary{cursor:pointer;color:var(--muted)}
 .daily{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--factory);border-radius:10px;padding:10px 14px;display:grid;gap:8px}
 .daily[hidden]{display:none}
 .daily .dh{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
-.daily .dh small{color:var(--muted);font-size:.78rem}
+.daily .dh small{color:var(--muted);font-size:.78rem}.daily .dh small.warn{color:var(--warn)}
 .daily .nums{display:flex;flex-wrap:wrap;gap:8px}
 .daily .nums span{background:var(--factory-bg);border-radius:8px;padding:4px 10px;font-size:.82rem;color:var(--muted)}
 .daily .nums b{font-family:var(--mono);font-size:1.1rem;color:var(--ink);margin-right:3px;font-variant-numeric:tabular-nums}
@@ -470,7 +470,10 @@ function fillClients(rows){
 // 오늘 저녁 일량 칸: 오늘 날짜 자료가 있을 때만 보임
 function renderDaily(){
   const d=data&&data.daily,el=$("daily");
-  if(!d||d.date!==today()){el.hidden=true;return}
+  // 오늘 자료가 아직 없으면(아침~13시) 가장 최근 날 자료를 날짜 붙여 보여 줌(무옥님 10/7 "디티피아가 빠졌는데?"). 3일 넘은 자료는 숨김
+  if(!d||!/^\d{4}-\d{2}-\d{2}$/.test(d.date||"")){el.hidden=true;return}
+  const isToday=d.date===today(),dAge=(new Date(today())-new Date(d.date))/864e5;
+  if(!isToday&&!(dAge>0&&dAge<=3)){el.hidden=true;return}
   const t=d.dtpia||{},c=d.cip||{},miss=c.missing||[],sb=d.sambo||[],rp=d.reprint||[];
   const num=(v,l,cls)=>v==null?"":`<span${cls?` class="${cls}"`:""}><b>${esc(Number(v).toLocaleString("ko-KR"))}</b>${l}</span>`;
   const more=[
@@ -478,7 +481,7 @@ function renderDaily(){
     sb.length?`<div class="ln">오늘 CIP 처리된 삼보 일: <b>${sb.slice(0,12).map(x=>esc((x.time?x.time+" ":"")+x.name)).join(" · ")}</b></div>`:"",
     rp.length?`<div class="ln warn">재출력 의심(같은 판 두 번 이상): <b>${rp.slice(0,8).map(x=>esc(x.name+" ("+(x.times||[]).join(", ")+")")).join(" · ")}</b></div>`:""].join("");
   const cnt=(miss.length?1:0)+(sb.length?1:0)+(rp.length?1:0);
-  el.innerHTML=`<div class="dh"><h2>오늘 저녁 디티피아 일량</h2><small>${t.asOf?`주문 ${esc(t.asOf)} 기준`:""}${c.asOf?` · CIP ${esc(c.asOf)} 기준`:""} · 1도 = 1판</small></div>
+  el.innerHTML=`<div class="dh"><h2>${isToday?"오늘 저녁":`${+d.date.slice(5,7)}/${+d.date.slice(8)} 저녁`} 디티피아 일량</h2>${isToday?"":`<small class="warn">오늘 자료는 13시부터 들어와</small>`}<small>${t.asOf?`주문 ${esc(t.asOf)} 기준`:""}${c.asOf?` · CIP ${esc(c.asOf)} 기준`:""} · 1도 = 1판</small></div>
     ${(()=>{const nums=`${num(t.orders,"건")}${num(t.plates,"판")}${num(t.sheets,"장")}${c.expected!=null?`<span${miss.length?' class="bad"':""}><b>${esc(c.arrived??0)}/${esc(c.expected)}</b>건 CIP 도착</span>`:""}`;
       const L=t.list||[];if(!L.length)return `<div class="nums">${nums}</div>`;
       const v=x=>esc(x==null||x===""?"-":x),cip=x=>x.cip===true?`<span class="ok">✓ 도착</span>`:x.cip===false?`<span class="no">아직</span>`:"";
