@@ -587,7 +587,7 @@ function ingOf(r,s){
     if(d&&d.curP)return [`🖨 인쇄중 · ${d.curP.part} ${d.hm(d.curP.act)}~`,"g"];
     if(d&&d.lastP&&d.lastP.endAt){const e=d.lastP.endAt;return [`✔ 인쇄끝 · ${+e.slice(5,7)}/${+e.slice(8,10)} ${d.hm(e)} (다음 판 내림 기준)`,"g"]}
     // 웹하드 기록은 최근 24시간만 → 이틀 넘게 인쇄 칸에 있는 건 '인쇄중?'이 아니라 다음 단계 확인필요(무옥님 10/7 캡처: 9/21~23 건이 다 빨간 '인쇄중?')
-    const t=Date.parse(String(inAt(r)).replace(" ","T")),days=isNaN(t)?0:Math.floor((Date.now()-t)/864e5);
+    const md=stepAt(r,s),days=md?ageOf(md):0; // 카드 머리 '9/21 부터 · 16일째'와 같은 기준
     if(days>=2)return [`⏳ 인쇄 칸 ${days}일째 · 끝났는지 확인필요`,"q"];
     if(/디티피아/.test(r.client||""))return ["🖨 디티피아 일량 · 위 '지금 기계' 참고","b"];
     return [d&&d.noNo?"🖨 인쇄중? · 접수번호 없음 (확인필요)":"🖨 인쇄중? · 판 내림 기록 없음 (확인필요)","q"]}
@@ -742,7 +742,7 @@ function paginate(){
   $("pgTxt").textContent=`${start+1}~${end} / ${cards.length}건`;$("pgPrev").disabled=start===0;$("pgNext").disabled=end>=cards.length;
   $("pgNext").dataset.next=end;
 }
-function gotoOpen(){const cs=[...document.querySelectorAll("#list .card")],i=cs.findIndex(c=>c.classList.contains("open"));if(i<0)return;const c=cs[i];if(c.hidden||c.offsetTop+c.offsetHeight>$("listbox").clientHeight){pageStarts.push(i);render()}showOpen()} // 누른 건이 페이지 맨 위에 오게(무옥님 10/7 "누르면 맨뒤로가있어")
+function gotoOpen(){const id=openRow;if(id==null)return;openRow=null;pageStarts=[0];render();for(let k=0;k<40;k++){const l=document.querySelector(`#list .line[data-open="${id}"]`),c=l&&l.closest(".card");if(!c||!c.hidden)break;if($("pgNext").disabled)break;pageStarts.push(+$("pgNext").dataset.next||0);render()}openRow=id;render();showOpen()} // 다 접힌 채 1쪽부터 보통 페이지로 넘겨 그 건이 든 페이지를 찾고, 그 자리에서 펼침(무옥님 10/7 "순서 맨뒤부터시작돼")
 function showOpen(){const box=$("listbox"),c=document.querySelector("#list .card.open");if(!c||c.hidden)return;const H=box.clientHeight;if(c.offsetTop+c.offsetHeight>box.scrollTop+H||c.offsetTop<box.scrollTop)box.scrollTop=Math.max(0,c.offsetTop-8)}
 function openDrawer(){if($("drawer").hidden){pageStarts=[0]}$("drawer").hidden=false;$("shade").hidden=false;render()}
 function closeDrawer(){openRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;fStale=false;pageStarts=[0];render()}
