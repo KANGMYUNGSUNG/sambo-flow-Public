@@ -586,6 +586,10 @@ function ingOf(r,s){
   if(s==="공장-인쇄"){const d=pressData(r);
     if(d&&d.curP)return [`🖨 인쇄중 · ${d.curP.part} ${d.hm(d.curP.act)}~`,"g"];
     if(d&&d.lastP&&d.lastP.endAt){const e=d.lastP.endAt;return [`✔ 인쇄끝 · ${+e.slice(5,7)}/${+e.slice(8,10)} ${d.hm(e)} (다음 판 내림 기준)`,"g"]}
+    // 웹하드 기록은 최근 24시간만 → 이틀 넘게 인쇄 칸에 있는 건 '인쇄중?'이 아니라 다음 단계 확인필요(무옥님 10/7 캡처: 9/21~23 건이 다 빨간 '인쇄중?')
+    const t=Date.parse(String(inAt(r)).replace(" ","T")),days=isNaN(t)?0:Math.floor((Date.now()-t)/864e5);
+    if(days>=2)return [`⏳ 인쇄 칸 ${days}일째 · 끝났는지 확인필요`,"q"];
+    if(/디티피아/.test(r.client||""))return ["🖨 디티피아 일량 · 위 '지금 기계' 참고","b"];
     return [d&&d.noNo?"🖨 인쇄중? · 접수번호 없음 (확인필요)":"🖨 인쇄중? · 판 내림 기록 없음 (확인필요)","q"]}
   return ING[s]||null}
 function liveNow(d){const dn=d&&d.dn;if(!dn||!(dn.items||[]).length)return "";
@@ -738,7 +742,8 @@ function paginate(){
   $("pgTxt").textContent=`${start+1}~${end} / ${cards.length}건`;$("pgPrev").disabled=start===0;$("pgNext").disabled=end>=cards.length;
   $("pgNext").dataset.next=end;
 }
-function gotoOpen(){for(let k=0;k<20;k++){const c=document.querySelector("#list .card.open");if(!c||!c.hidden)return;if($("pgNext").disabled)return;pageStarts.push(+$("pgNext").dataset.next||0);render()}}
+function gotoOpen(){const cs=[...document.querySelectorAll("#list .card")],i=cs.findIndex(c=>c.classList.contains("open"));if(i<0)return;const c=cs[i];if(c.hidden||c.offsetTop+c.offsetHeight>$("listbox").clientHeight){pageStarts.push(i);render()}showOpen()} // 누른 건이 페이지 맨 위에 오게(무옥님 10/7 "누르면 맨뒤로가있어")
+function showOpen(){const box=$("listbox"),c=document.querySelector("#list .card.open");if(!c||c.hidden)return;const H=box.clientHeight;if(c.offsetTop+c.offsetHeight>box.scrollTop+H||c.offsetTop<box.scrollTop)box.scrollTop=Math.max(0,c.offsetTop-8)}
 function openDrawer(){if($("drawer").hidden){pageStarts=[0]}$("drawer").hidden=false;$("shade").hidden=false;render()}
 function closeDrawer(){openRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;fStale=false;pageStarts=[0];render()}
 function onData(d){
@@ -812,7 +817,7 @@ $("addForm").addEventListener("submit",async e=>{
 });
 $("list").addEventListener("click",e=>{
   const c=e.target.closest("button[data-close]");if(c){openRow=null;editing=null;histOpen=null;render();return}
-  const ln=e.target.closest(".line[data-open]");if(ln&&!e.target.closest("button")){const id=+ln.dataset.open;openRow=openRow===id?null:id;editing=null;histOpen=null;render();return}
+  const ln=e.target.closest(".line[data-open]");if(ln&&!e.target.closest("button")){const id=+ln.dataset.open;openRow=openRow===id?null:id;editing=null;histOpen=null;render();showOpen();return}
   const dt=e.target.closest("button[data-detail]");if(dt){const id=+dt.dataset.detail;detailOpen=detailOpen===id?null:id;pendingMove=null;render();return}
   const dv=e.target.closest("button[data-deliv]");if(dv){deliv={id:+dv.dataset.deliv,m:"",info:""};pendingMove=null;render();return}
   const dm=e.target.closest("button[data-dm]");if(dm&&deliv){deliv.m=dm.dataset.dm;deliv.info="";render();return}
@@ -824,7 +829,7 @@ $("list").addEventListener("click",e=>{
     save(r.row,{step:DONE,detail:{where:d.m+(d.info?(d.m==="택배"?" 송장 ":" ")+d.info:""),what:"납품 완료(서류 대조 전)"}});return}
   const cc=e.target.closest("button[data-cancel]");if(cc){pendingMove=null;render();return}
   const ok=e.target.closest("button[data-ok]");if(ok){const pm=pendingMove,r=pm&&data.rows.find(x=>x.row===pm.id);if(!r||stepOf(r)!==pm.from){pendingMove=null;render();return}if(ok.disabled)return;ok.disabled=true;ok.textContent="저장 중…";pendingMove=null;save(r.row,{step:pm.to});return}
-  const sh=e.target.closest("button[data-show]");if(sh){const id=+sh.dataset.show;openRow=openRow===id?null:id;detailOpen=null;pendingMove=null;editing=null;histOpen=null;render();return}
+  const sh=e.target.closest("button[data-show]");if(sh){const id=+sh.dataset.show;openRow=openRow===id?null:id;detailOpen=null;pendingMove=null;editing=null;histOpen=null;render();showOpen();return}
   const b=e.target.closest("button[data-act]");if(!b)return;
   const r=data.rows.find(x=>x.row===+b.dataset.id);if(!r)return;
   const ord=ORDER[kindOf(r)],i=ord.indexOf(stepOf(r));
