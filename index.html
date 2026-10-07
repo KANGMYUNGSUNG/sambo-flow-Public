@@ -588,7 +588,7 @@ function ingOf(r,s){
     if(d&&d.lastP&&d.lastP.endAt){const e=d.lastP.endAt;return [`✔ 인쇄끝 · ${+e.slice(5,7)}/${+e.slice(8,10)} ${d.hm(e)} (다음 판 내림 기준)`,"g"]}
     // 웹하드 기록은 최근 24시간만 → 이틀 넘게 인쇄 칸에 있는 건 '인쇄중?'이 아니라 다음 단계 확인필요(무옥님 10/7 캡처: 9/21~23 건이 다 빨간 '인쇄중?')
     const md=stepAt(r,s),days=md?ageOf(md):0; // 카드 머리 '9/21 부터 · 16일째'와 같은 기준
-    if(days>=2)return [`⏳ 인쇄 칸 ${days}일째 · 끝났는지 확인필요`,"q"];
+    if(days>=2)return [`⏳ 인쇄로 넘어온 지 ${days}일 · 끝났으면 다음 단계로`,"q"]; // 무옥님 10/7 20:30 문구 3번
     if(/디티피아/.test(r.client||""))return ["🖨 디티피아 일량 · 위 '지금 기계' 참고","b"];
     return [d&&d.noNo?"🖨 인쇄중? · 접수번호 없음 (확인필요)":"🖨 인쇄중? · 판 내림 기록 없음 (확인필요)","q"]}
   return ING[s]||null}
