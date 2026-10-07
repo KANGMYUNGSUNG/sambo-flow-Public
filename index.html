@@ -479,23 +479,25 @@ function dnBox(d,t,c){
   const dn=d.dn,L=t.list||[];if(!dn||!L.length)return "";
   const md=d.date.slice(5,7)+d.date.slice(8,10),st={},pn=x=>(String(x.pan||"").match(/\d+/)||[""])[0];
   (dn.items||[]).forEach(x=>{if(x.md!==md)return;const s=st[x.pan]||(st[x.pan]={start:x.first,last:x.last,n:0,sides:{}});if(x.first<s.start)s.start=x.first;if(x.last>s.last)s.last=x.last;s.n+=x.n||1;s.sides[x.side||"?"]=1});
-  const ev=Object.keys(st).map(k=>({pan:k,t:st[k].start,last:st[k].last})).concat((dn.own||[]).map(o=>({own:o.name,t:o.first,last:o.first})));
-  const maxLast=ev.reduce((m,e)=>e.last>m?e.last:m,"");
+  const ev=Object.keys(st).map(k=>({pan:k,t:st[k].start,last:st[k].last})); // 삼보 자체 일(own)은 순서에 안 넣음: 10/7 09:00 오픽 내린 뒤 09:04에도 인쇄기엔 532A(사진)
+  const maxT=ev.reduce((m,e)=>e.t>m?e.t:m,""); // 순서는 '처음 내린 시각'만(다시 내림은 새 건 아님, 10/7)
   const pl=x=>{const c=parseInt(x.colors,10)||0;return String(x.side||"").includes("돈땡")?Math.ceil(c/2):c},sh=x=>parseInt(String(x.sheets||"").replace(/,/g,""),10)||0;
   const sum=a=>({n:a.length,p:a.reduce((s,x)=>s+pl(x),0),s:a.reduce((s,x)=>s+sh(x),0)});
   const started=L.filter(x=>st[pn(x)]),left=L.filter(x=>!st[pn(x)]);
   let now=null;const done=[];
-  started.forEach(x=>{const k=pn(x),nx=ev.filter(e=>e.pan!==k&&e.t>st[k].last).sort((a,b)=>a.t<b.t?-1:1)[0];if(nx)done.push({x,end:nx.t,start:st[k].start});else if(st[k].last===maxLast)now=x});
-  const lastEv=ev.slice().sort((a,b)=>a.last<b.last?-1:1).pop();
+  started.forEach(x=>{const k=pn(x),nx=ev.filter(e=>e.pan!==k&&e.t>st[k].start).sort((a,b)=>a.t<b.t?-1:1)[0];if(nx)done.push({x,end:nx.t,start:st[k].start});else if(st[k].start===maxT)now=x});
+  const lastEv=ev.slice().sort((a,b)=>a.t<b.t?-1:1).pop();
+  const reNow=Object.keys(st).filter(k=>st[k].n>Object.keys(st[k].sides).length&&st[k].last>maxT).map(k=>`${k} ${st[k].last.slice(11,16)}`);
   const hm=v=>v?v.slice(11,16):"",N=v=>Number(v).toLocaleString("ko-KR");
   const S=sum(started),Lf=sum(left),D=done.length,recent=done.sort((a,b)=>a.end<b.end?-1:1).pop();
   const mins=recent?Math.round((new Date(recent.end.replace(" ","T"))-new Date(recent.start.replace(" ","T")))/6e4):null;
   const again=started.filter(x=>{const q=st[pn(x)];return q.n>Object.keys(q.sides).length}).length;
+  const reTxt=reNow.length?` <span class="s">· 그 뒤 다시 내림: ${esc(reNow.join(", "))}</span>`:"";
   const nowTxt=now?`<b>${esc(now.pan)} ${esc(now.kind||"")}</b> · ${pl(now)}판 · ${N(sh(now))}장 <span class="s">${hm(st[pn(now)].start)} 내림</span>`:lastEv&&lastEv.own?`삼보 일: <b>${esc(lastEv.own)}</b> <span class="s">${hm(lastEv.t)} 내림</span>`:"없음";
   return `<div class="pb"><div class="lab"><span class="tag tr">● 기록</span> 웹하드에 시각이 남은 것 · ${esc(hm(dn.asOf))} 기준</div><div class="g">
    <div class="c rec">📥 CIP 도착<br><b class="n">${c.arrived!=null?esc(c.arrived):"-"}</b>${c.expected!=null?`/${esc(c.expected)}`:""}건</div>
    <div class="c rec">🖨 인쇄 시작<br><b class="n">${S.n}</b>건 <span class="s">${S.p}판 · ${N(S.s)}장</span><div class="s">기장이 건마다 내린 시각${again?` · 다시 내림 ${again}건`:""}</div></div>
-   <div class="c rec full">▶ 지금 기계에 걸린 건: ${nowTxt}</div>
+   <div class="c rec full">▶ 지금 기계에 걸린 건: ${nowTxt}${reTxt}</div>
    <div class="c rec full">⏳ 아직 안 내린 일 <b>${Lf.n}</b>건 · ${Lf.p}판 · ${N(Lf.s)}장</div></div>
    <div class="lab"><span class="tag te">◌ 추정</span> 다음 판을 내린 시각으로 짐작</div><div class="g">
    <div class="c est">✅ 인쇄 끝<br><b class="n">${D}</b>건<div class="s">다음 판을 내렸으면 끝으로 봄</div></div>
