@@ -370,9 +370,10 @@ const firstAt=r=>(r.log&&r.log[0]&&r.log[0].at)||r.at||"99-99";
 const noKey=r=>{const m=String(r.no||"").match(/(\d+)\s*-\s*(\d+)/);return m?(+m[1])*10000+(+m[2]):99999999};
 // 건별 현황: 영업공유 접수대장 순서(접수번호 오래된 것 위), 대장 번호 없는 견적 건은 그 뒤에 날짜순(무옥님 10/5 21:58)
 const byLedger=(a,b)=>(!a.no-!b.no)||(a.no&&b.no?noKey(a)-noKey(b):0)||String(firstAt(a)).localeCompare(String(firstAt(b)))||a.row-b.row;
-// 공장·인쇄 칸만 '마지막으로 바뀐 시각'(기록 맨 끝, MM-dd HH:mm)이 늦은 것 = 최신이 맨 위(무옥님 10/7 13:32)
-const lastAt=r=>{const l=r.log||[];return String((l.length&&l[l.length-1].at)||r.at||"")};
-const byNewIn=(a,b)=>lastAt(b).localeCompare(lastAt(a))||String(firstAt(b)).localeCompare(String(firstAt(a)))||b.row-a.row;
+// 공장·인쇄 칸만 '그 단계에 들어온 시각'(MM-dd HH:mm, 카드의 'N/N 부터'와 같은 기준)이 늦은 것 = 최신이 맨 위(무옥님 10/7 13:32·16:09)
+// 10/7 v41: 기록 맨 끝 시각으로 정렬하니 9/21에 들어온 KSAM이 오늘 다른 기록 한 줄 때문에 맨 위로 올라와서 바꿈
+const inAt=r=>{const s=stepOf(r),l=r.log||[];let j=-1;l.forEach((x,k)=>{if(normStep(x.step)!==s)j=k});const e=l.slice(j+1).find(x=>normStep(x.step)===s);return String((e&&e.at)||(l.length&&l[l.length-1].at)||r.at||"")};
+const byNewIn=(a,b)=>inAt(b).localeCompare(inAt(a))||String(firstAt(b)).localeCompare(String(firstAt(a)))||b.row-a.row;
 const byOld=(a,b)=>String(firstAt(a)).localeCompare(String(firstAt(b)))||noKey(a)-noKey(b)||a.row-b.row;
 const num=v=>{const n=parseFloat(String(v??"").replace(/,/g,""));return isFinite(n)?n:null};
 function itemsSum(r){const it=r.items||[];if(!it.length)return "";const d={};let q=0,y=0,qa=true,ya=true;
