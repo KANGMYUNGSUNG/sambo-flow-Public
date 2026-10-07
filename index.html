@@ -257,6 +257,12 @@ body{font-size:1rem}
 .dsum button b{margin-left:.3rem}
 .dsum button:hover{border-color:var(--accent)}
 .dsum button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.daily .pb{margin:10px 0 4px}.daily .pb .lab{font-size:.8rem;font-weight:700;margin:8px 0 5px;display:flex;align-items:center;gap:6px;color:var(--ink)}
+.daily .pb .tag{font-size:.72rem;border-radius:6px;padding:1px 6px;color:#fff}.daily .pb .tr{background:var(--ok)}.daily .pb .te{background:var(--stale)}
+.daily .pb .g{display:grid;grid-template-columns:1fr 1fr;gap:6px}.daily .pb .c{border-radius:9px;padding:7px 9px;font-size:.84rem;color:var(--muted)}
+.daily .pb .rec{border:2px solid var(--ok)}.daily .pb .est{border:2px dashed var(--stale)}.daily .pb .full{grid-column:1/3}
+.daily .pb .c b.n{font-family:var(--mono);font-size:1.25rem;color:var(--ink)}.daily .pb .c b{color:var(--ink)}.daily .pb .s{font-size:.76rem}
+.daily .pb .leg{font-size:.74rem;color:var(--muted);margin-top:6px}
 </style>
 </head>
 <body>
@@ -468,6 +474,34 @@ function fillClients(rows){
   if(cur&&!names.includes(cur))sel.value="";
 }
 // 오늘 저녁 일량 칸: 오늘 날짜 자료가 있을 때만 보임
+// 웹하드 내림 기록으로 인쇄 상태(10/7 무옥님 시안 OK): 초록 = 기록, 주황 점선 = 추정. 판 = 인쇄색도, 돈땡은 반(올림)
+function dnBox(d,t,c){
+  const dn=d.dn,L=t.list||[];if(!dn||!L.length)return "";
+  const md=d.date.slice(5,7)+d.date.slice(8,10),st={},pn=x=>(String(x.pan||"").match(/\d+/)||[""])[0];
+  (dn.items||[]).forEach(x=>{if(x.md!==md)return;const s=st[x.pan]||(st[x.pan]={start:x.first,last:x.last,n:0,sides:{}});if(x.first<s.start)s.start=x.first;if(x.last>s.last)s.last=x.last;s.n+=x.n||1;s.sides[x.side||"?"]=1});
+  const ev=Object.keys(st).map(k=>({pan:k,t:st[k].start,last:st[k].last})).concat((dn.own||[]).map(o=>({own:o.name,t:o.first,last:o.first})));
+  const maxLast=ev.reduce((m,e)=>e.last>m?e.last:m,"");
+  const pl=x=>{const c=parseInt(x.colors,10)||0;return String(x.side||"").includes("돈땡")?Math.ceil(c/2):c},sh=x=>parseInt(String(x.sheets||"").replace(/,/g,""),10)||0;
+  const sum=a=>({n:a.length,p:a.reduce((s,x)=>s+pl(x),0),s:a.reduce((s,x)=>s+sh(x),0)});
+  const started=L.filter(x=>st[pn(x)]),left=L.filter(x=>!st[pn(x)]);
+  let now=null;const done=[];
+  started.forEach(x=>{const k=pn(x),nx=ev.filter(e=>e.pan!==k&&e.t>st[k].last).sort((a,b)=>a.t<b.t?-1:1)[0];if(nx)done.push({x,end:nx.t,start:st[k].start});else if(st[k].last===maxLast)now=x});
+  const lastEv=ev.slice().sort((a,b)=>a.last<b.last?-1:1).pop();
+  const hm=v=>v?v.slice(11,16):"",N=v=>Number(v).toLocaleString("ko-KR");
+  const S=sum(started),Lf=sum(left),D=done.length,recent=done.sort((a,b)=>a.end<b.end?-1:1).pop();
+  const mins=recent?Math.round((new Date(recent.end.replace(" ","T"))-new Date(recent.start.replace(" ","T")))/6e4):null;
+  const again=started.filter(x=>{const q=st[pn(x)];return q.n>Object.keys(q.sides).length}).length;
+  const nowTxt=now?`<b>${esc(now.pan)} ${esc(now.kind||"")}</b> · ${pl(now)}판 · ${N(sh(now))}장 <span class="s">${hm(st[pn(now)].start)} 내림</span>`:lastEv&&lastEv.own?`삼보 일: <b>${esc(lastEv.own)}</b> <span class="s">${hm(lastEv.t)} 내림</span>`:"없음";
+  return `<div class="pb"><div class="lab"><span class="tag tr">● 기록</span> 웹하드에 시각이 남은 것 · ${esc(hm(dn.asOf))} 기준</div><div class="g">
+   <div class="c rec">📥 CIP 도착<br><b class="n">${c.arrived!=null?esc(c.arrived):"-"}</b>${c.expected!=null?`/${esc(c.expected)}`:""}건</div>
+   <div class="c rec">🖨 인쇄 시작<br><b class="n">${S.n}</b>건 <span class="s">${S.p}판 · ${N(S.s)}장</span><div class="s">기장이 건마다 내린 시각${again?` · 다시 내림 ${again}건`:""}</div></div>
+   <div class="c rec full">▶ 지금 기계에 걸린 건: ${nowTxt}</div>
+   <div class="c rec full">⏳ 아직 안 내린 일 <b>${Lf.n}</b>건 · ${Lf.p}판 · ${N(Lf.s)}장</div></div>
+   <div class="lab"><span class="tag te">◌ 추정</span> 다음 판을 내린 시각으로 짐작</div><div class="g">
+   <div class="c est">✅ 인쇄 끝<br><b class="n">${D}</b>건<div class="s">다음 판을 내렸으면 끝으로 봄</div></div>
+   <div class="c est">⏱ 방금 끝난 건<br>${recent?`<b class="n">${mins}</b>분<div class="s">${esc(recent.x.pan)} · 판 교체 포함</div>`:"<b>-</b>"}</div></div>
+   <div class="leg">● 초록 실선 = 기록 · ◌ 주황 점선 = 짐작(틀릴 수 있음) · 낮조·밤조 같은 규칙 · 인쇄기 장수는 못 읽음</div></div>`;
+}
 function renderDaily(){
   const d=data&&data.daily,el=$("daily");
   // 오늘 자료가 아직 없으면(아침~13시) 가장 최근 날 자료를 날짜 붙여 보여 줌(무옥님 10/7 "디티피아가 빠졌는데?"). 3일 넘은 자료는 숨김
@@ -481,13 +515,13 @@ function renderDaily(){
     sb.length?`<div class="ln">오늘 CIP 처리된 삼보 일: <b>${sb.slice(0,12).map(x=>esc((x.time?x.time+" ":"")+x.name)).join(" · ")}</b></div>`:"",
     rp.length?`<div class="ln warn">재출력 의심(같은 판 두 번 이상): <b>${rp.slice(0,8).map(x=>esc(x.name+" ("+(x.times||[]).join(", ")+")")).join(" · ")}</b></div>`:""].join("");
   const cnt=(miss.length?1:0)+(sb.length?1:0)+(rp.length?1:0);
-  el.innerHTML=`<div class="dh"><h2>${isToday?"오늘 저녁":`${+d.date.slice(5,7)}/${+d.date.slice(8)} 저녁`} 디티피아 일량</h2>${isToday?"":`<small class="warn">오늘 자료는 13시부터 들어와</small>`}<small>${t.asOf?`주문 ${esc(t.asOf)} 기준`:""}${c.asOf?` · CIP ${esc(c.asOf)} 기준`:""} · 1도 = 1판</small></div>
+  el.innerHTML=`<div class="dh"><h2>${isToday?"오늘 저녁":`${+d.date.slice(5,7)}/${+d.date.slice(8)} 저녁`} 디티피아 일량</h2>${isToday?"":`<small class="warn">오늘 자료는 13시부터 들어와</small>`}<small>${t.asOf?`주문 ${esc(t.asOf)} 기준`:""}${c.asOf?` · CIP ${esc(c.asOf)} 기준`:""} · 1도 = 1판, 돈땡은 반</small></div>
     ${(()=>{const nums=`${num(t.orders,"건")}${num(t.plates,"판")}${num(t.sheets,"장")}${c.expected!=null?`<span${miss.length?' class="bad"':""}><b>${esc(c.arrived??0)}/${esc(c.expected)}</b>건 CIP 도착</span>`:""}`;
-      const L=t.list||[];if(!L.length)return `<div class="nums">${nums}</div>`;
+      const L=t.list||[];if(!L.length)return `<div class="nums">${nums}</div>`;const pbx=dnBox(d,t,c);
       const v=x=>esc(x==null||x===""?"-":x),cip=x=>x.cip===true?`<span class="ok">✓ 도착</span>`:x.cip===false?`<span class="no">아직</span>`:"";
       const tr=L.map(x=>`<tr><td class="m1"><span class="pan">${v(x.pan)}</span> ${v(x.kind)} · <b>${v(x.sheets)}</b>장 ${cip(x)}</td><td class="d" data-l="일자">${v(x.date)}</td><td class="pan h">${v(x.pan)}</td><td class="h">${v(x.kind)}</td><td data-l="코팅">${v(x.coat)}</td><td data-l="자재명">${v(x.paper)}</td><td data-l="절수">${v(x.cut)}</td><td data-l="결구분">${v(x.grain)}</td><td data-l="인쇄색도">${v(x.colors)}</td><td data-l="면">${v(x.side)}</td><td class="n h">${v(x.sheets)}</td><td class="memo" data-l="비고">${v(x.memo)}</td><td class="h">${cip(x)}</td></tr>`).join("");
       return `<details id="dtList"${dtOpen?" open":""}><summary class="nums">${nums}<span class="go">▸ 판 목록 ${L.length}개 보기</span></summary><button type="button" class="back sm" data-back="dt">← 뒤로</button>
-        <table class="dtt"><thead><tr><th>일자</th><th>판번호</th><th>품종</th><th>코팅</th><th>자재명</th><th>절수</th><th>결구분</th><th>인쇄색도</th><th>면</th><th>인쇄장수</th><th>비고</th><th>CIP</th></tr></thead><tbody>${tr}</tbody></table></details>`})()}
+        ${""}<table class="dtt"><thead><tr><th>일자</th><th>판번호</th><th>품종</th><th>코팅</th><th>자재명</th><th>절수</th><th>결구분</th><th>인쇄색도</th><th>면</th><th>인쇄장수</th><th>비고</th><th>CIP</th></tr></thead><tbody>${tr}</tbody></table></details>${pbx}`})()}
     ${cnt?`<details id="dailyMore"${dailyOpen?" open":""}><summary>▸ 자세히 보기 (${[miss.length?"빠진 판 "+miss.length:"",sb.length?"삼보 일 "+sb.length:"",rp.length?"재출력 의심 "+rp.length:""].filter(Boolean).join(" · ")})</summary><button type="button" class="back sm" data-back="daily">← 뒤로</button>${more}</details>`:""}`;
   el.hidden=false;
 }
