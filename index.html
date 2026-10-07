@@ -252,6 +252,7 @@ body{font-size:1rem}
 .gnote{color:var(--muted);font-size:.85rem;margin:0}
 .dsum{display:flex;flex-wrap:wrap;gap:.35rem;margin:.1rem 0 .5rem}
 .dsum[hidden]{display:none}
+.dsum.live{border:2px solid var(--ok);border-radius:10px;padding:.4rem .6rem;align-items:baseline;gap:.2rem .5rem}.dsum.live b{font-size:1.05rem}.dsum.live .s{font-size:.82rem;color:var(--muted)}
 .dsum .lbl{font-size:.85rem;color:var(--muted);align-self:center;margin-right:.2rem}
 .dsum button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.2rem .7rem;cursor:pointer}
 .dsum button b{margin-left:.3rem}
@@ -549,6 +550,12 @@ function dnBox(d,t,c){
    ${det(["cip","start","left","done","recent","now"])}<div class="asof">웹하드 기록 ${esc(hm(dn.asOf))} 기준 · 초록 = 기록, 주황 점선 = 추정</div>
    ${glOpen?`<div class="glo" role="dialog" aria-label="용어 설명"><div class="glh"><button type="button" class="back" data-glback="1">← 뒤로</button><b>디티피아 칸 용어 설명</b></div><div class="glg"><div class="gi"><div class="gt"><span class="tag tr">● 기록</span></div><div class="gd">초록 실선 칸. 웹하드에 시각이 남은 것 그대로</div></div><div class="gi"><div class="gt"><span class="tag te">◌ 추정</span></div><div class="gd">주황 점선 칸. 다음 판 내린 시각으로 짐작, 틀릴 수 있음</div></div><div class="gi"><div class="gt"><span class="pn">527대</span></div><div class="gd">판번호, 디티피아가 붙인 번호</div></div><div class="gi"><div class="gt">판수</div><div class="gd">그 건에 드는 판 장수. 1도 = 1판, 돈땡은 반</div></div><div class="gi"><div class="gt">장수</div><div class="gd">인쇄할 종이 장수(주문서 기준)</div></div><div class="gi"><div class="gt">CIP 도착</div><div class="gd">판 파일이 CIP에 들어왔는지</div></div><div class="gi"><div class="gt">인쇄 시작</div><div class="gd">기장이 판 파일을 웹하드에서 처음 내린 시각</div></div><div class="gi"><div class="gt">인쇄 끝</div><div class="gd">다음 건 판을 내린 시각, 판 교체 시간 포함</div></div><div class="gi"><div class="gt"><span class="rt">다시 09:37</span></div><div class="gd">같은 판 파일을 한 번 더 내린 시각, 새 건 아님</div></div><div class="gi"><div class="gt"><span class="yl">노란 줄</span></div><div class="gd">지금 기계에 걸린 건</div></div><div class="gi"><div class="gt"><span class="bm"><i></i>막대</span></div><div class="gd">걸린 시간, 길수록 오래 걸림</div></div><div class="gi"><div class="gt">▼ 칸</div><div class="gd">누르면 건별 표가 펼쳐짐</div></div><div class="gi"><div class="gt">낮조·밤조</div><div class="gd">같은 규칙으로 셈. 인쇄기 장수는 못 읽음</div></div></div></div>`:""}</div></div>`;
 }
+// 공장·인쇄 자세히 맨 위 '지금 기계' 한 줄(무옥님 10/7 13:35 "실시간으로"): 웹하드 내림 기록 그대로, 화면은 5초마다 새로 읽음
+function liveNow(d){const dn=d&&d.dn,L=(d&&d.dtpia&&d.dtpia.list)||[];if(!dn||!L.length||!/^\d{4}-\d{2}-\d{2}$/.test(d.date||""))return "";
+  const md=d.date.slice(5,7)+d.date.slice(8,10),st={};(dn.items||[]).forEach(x=>{if(x.md!==md)return;if(!st[x.pan]||x.first<st[x.pan])st[x.pan]=x.first});
+  const ks=Object.keys(st);if(!ks.length)return "";const k=ks.reduce((m,q)=>st[q]>st[m]?q:m,ks[0]),pn=x=>(String(x.pan||"").match(/\d+/)||[""])[0];
+  const x=L.find(y=>pn(y)===k)||{pan:k+"대"},n=L.filter(y=>st[pn(y)]).length,hm=v=>String(v||"").slice(11,16);
+  return `<span class="lbl">🖨 지금 기계</span><b>${esc(x.pan)} ${esc(x.kind||"")}</b> <span class="s">${hm(st[k])} 내림 · 디티피아 ${n}/${L.length}건 시작 · 웹하드 ${esc(hm(dn.asOf))} 기준</span>`}
 function renderDaily(){
   const d=data&&data.daily,el=$("daily");
   // 오늘 자료가 아직 없으면(아침~13시) 가장 최근 날 자료를 날짜 붙여 보여 줌(무옥님 10/7 "디티피아가 빠졌는데?"). 3일 넘은 자료는 숨김
@@ -603,7 +610,9 @@ function render(){
     const steps=Object.keys(cnt).sort((a,b)=>(STEP_IDX[a]??999)-(STEP_IDX[b]??999));
     sumEl.innerHTML=steps.length?`<span class="lbl">지금 하는 일</span>`+steps.map(x=>`<button type="button" data-sum="${esc(x)}">${SK[x]?`${laneName(SK[x].lane)} · ${SK[x].l}`:esc(x)}<b>${cnt[x]}</b></button>`).join(""):"";
     sumEl.hidden=!steps.length;
-  }else if(!stepFromSum){sumEl.hidden=true}
+  }else if(fStep==="공장-인쇄"&&data&&data.daily){const lv=liveNow(data.daily);sumEl.innerHTML=lv;sumEl.hidden=!lv;sumEl.classList.toggle("live",!!lv)}
+  else if(!stepFromSum){sumEl.hidden=true}
+  if(fStep!=="공장-인쇄")sumEl.classList.remove("live");
   $("dTitle").textContent=fStep===WOWCELL.key?`공장 · ${WOWCELL.l} (${view.length}건)`:fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:fStale?`7일째 그대로 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
   if(!data){$("list").innerHTML=`<div class="empty">불러오는 중…</div>`;return}
   if(!view.length){$("list").innerHTML=`<div class="empty">${rows.length?"조건에 맞는 건이 없어.":"아직 등록된 건이 없어. '+ 새 건'으로 넣어 봐."}</div>`;return}
