@@ -419,7 +419,7 @@ function call(fn,...args){
   return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args));
 }
 
-let glOpen=false,pbSel="",dtOpen=false,openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,fStale=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
+let pinRow=null,glOpen=false,pbSel="",dtOpen=false,openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,fStale=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
 // 고르기 칸은 기억하지 않음: 서랍을 열 때마다 늘 전체로 시작(무옥님 10/5 "거르기 풀기 필요 없으면 빼")
 const rowKey=r=>(r.no||"")+"|"+r.item;
 const kindOf=r=>/^공장-와우/.test(r.step||"")||/와우/.test(r.kind||"")?"wow":(r.kind||"").includes("디자인")?"design":"print";
@@ -646,7 +646,8 @@ function render(){
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
     if(lane&&(fin||SK[s]?.lane!==lane))return false;
     if(sales&&(r.sales||"담당 확인")!==sales)return false;if(client&&(r.client||"거래처 미정")!==client)return false;return true})
-    .sort(fStep==="공장-인쇄"?byNewIn:byLedger); // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순. 단 공장·인쇄 칸은 최신이 맨 위(무옥님 10/7 13:32)
+    .sort(fStep==="공장-인쇄"?byNewIn:byLedger);
+  if(pinRow!=null){const k=view.findIndex(r=>r.row===pinRow);if(k>0)view.unshift(...view.splice(k,1))} // 큰 화면에서 누른 건은 1쪽 맨 위(무옥님 10/7 "누르면 이부분이 맨끝으로가있다") // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순. 단 공장·인쇄 칸은 최신이 맨 위(무옥님 10/7 13:32)
   // 진행 중 한눈에: 지금 어느 단계에 몇 건인지(흐름 순서대로) — 누르면 그 단계만
   const sumEl=$("dSum");
   if(!fStep&&!fLate&&!fStale&&dn!=="done"){
@@ -742,10 +743,10 @@ function paginate(){
   $("pgTxt").textContent=`${start+1}~${end} / ${cards.length}건`;$("pgPrev").disabled=start===0;$("pgNext").disabled=end>=cards.length;
   $("pgNext").dataset.next=end;
 }
-function gotoOpen(){const id=openRow;if(id==null)return;openRow=null;pageStarts=[0];render();for(let k=0;k<40;k++){const l=document.querySelector(`#list .line[data-open="${id}"]`),c=l&&l.closest(".card");if(!c||!c.hidden)break;if($("pgNext").disabled)break;pageStarts.push(+$("pgNext").dataset.next||0);render()}openRow=id;render();showOpen()} // 다 접힌 채 1쪽부터 보통 페이지로 넘겨 그 건이 든 페이지를 찾고, 그 자리에서 펼침(무옥님 10/7 "순서 맨뒤부터시작돼")
+function gotoOpen(){if(openRow==null)return;pinRow=openRow;pageStarts=[0];render();showOpen()} // 누른 건을 1쪽 맨 위로 올려 펼침, 나머지는 원래 순서(무옥님 10/7 18:49)
 function showOpen(){const box=$("listbox"),c=document.querySelector("#list .card.open");if(!c||c.hidden)return;const H=box.clientHeight;if(c.offsetTop+c.offsetHeight>box.scrollTop+H||c.offsetTop<box.scrollTop)box.scrollTop=Math.max(0,c.offsetTop-8)}
 function openDrawer(){if($("drawer").hidden){pageStarts=[0]}$("drawer").hidden=false;$("shade").hidden=false;render()}
-function closeDrawer(){openRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;fStale=false;pageStarts=[0];render()}
+function closeDrawer(){openRow=null;pinRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;fStale=false;pageStarts=[0];render()}
 function onData(d){
   const sig={};(d.rows||[]).forEach(r=>{const {row,...rest}=r;sig[rowKey(r)]=JSON.stringify(rest)});
   if(!firstLoad){const c=Object.keys(sig).filter(k=>prevSig[k]!==sig[k]);if(c.length){changed=new Set(c);clearTimeout(onData.h);onData.h=setTimeout(()=>{changed.clear();render()},15000)}}
@@ -779,15 +780,15 @@ function tick(){
   $("dot").classList.toggle("stale",stale);
   $("liveTxt").textContent=stale?`연결 끊김 (${ago}초째) · 인터넷 확인`:`실시간 · ${ago}초 전 확인`;
 }
-$("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fLate=false;fStale=false;pageStarts=[0];openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
-$("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;fStep=null;fLate=false;fStale=false;pageStarts=[0];
+$("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fLate=false;fStale=false;pageStarts=[0];pinRow=null;openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
+$("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;pinRow=null;fStep=null;fLate=false;fStale=false;pageStarts=[0];
   $("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value=k==="done"?"done":k==="arch"?"arch":"open";
   if(k.startsWith("lane:"))$("fLane").value=k.slice(5);if(k==="late")fLate=true;if(k==="stale")fStale=true;openDrawer()});
 $("openList").addEventListener("click",()=>{fStep=null;fLate=false;fStale=false;$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
 $("addTop").addEventListener("click",()=>{fStep=null;fLate=false;fStale=false;openDrawer();$("addForm").hidden=false;$("nItem").focus()});
 $("dClose").addEventListener("click",closeDrawer);$("shade").addEventListener("click",closeDrawer);
 $("dBack").addEventListener("click",()=>{if(pageStarts.length>1){pageStarts.pop();render()}else if(stepFromSum){fStep=null;stepFromSum=false;pageStarts=[0];render()}else closeDrawer()});
-$("dSum").addEventListener("click",e=>{const b=e.target.closest("button[data-sum]");if(!b)return;fStep=b.dataset.sum;stepFromSum=true;pageStarts=[0];$("dSum").hidden=true;render()});
+$("dSum").addEventListener("click",e=>{const b=e.target.closest("button[data-sum]");if(!b)return;fStep=b.dataset.sum;pinRow=null;stepFromSum=true;pageStarts=[0];$("dSum").hidden=true;render()});
 document.addEventListener("click",e=>{const b=e.target.closest("button[data-back]");if(!b)return;const d=b.closest("details");if(d)d.open=false});
 // Esc = 뒤로: 열린 것 중 가장 안쪽부터 하나씩 닫음 (고치기 칸 → 새 건 입력 → 목록 쪽 → 서랍 → 일량 자세히)
 document.addEventListener("keydown",e=>{if(e.key!=="Escape")return;
@@ -804,7 +805,7 @@ $("daily").addEventListener("click",e=>{if(e.target.closest("[data-gl]")){glOpen
 $("daily").addEventListener("keydown",e=>{const c=e.target.closest&&e.target.closest("[data-pb],[data-gl]");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();c.click()}});
 $("daily").addEventListener("toggle",e=>{if(e.target.id==="dailyMore")dailyOpen=e.target.open;if(e.target.id==="dtList")dtOpen=e.target.open},true);
 window.addEventListener("resize",()=>{if(!$("drawer").hidden)render();else fitSteps()});
-["fLane","fSales","fClient","fDone"].forEach(id=>$(id).addEventListener("change",()=>{fStep=null;fLate=false;fStale=false;pageStarts=[0];render()}));
+["fLane","fSales","fClient","fDone"].forEach(id=>$(id).addEventListener("change",()=>{pinRow=null;fStep=null;fLate=false;fStale=false;pageStarts=[0];render()}));
 $("addBtn").addEventListener("click",()=>{$("addForm").hidden=!$("addForm").hidden;if(!$("addForm").hidden)$("nItem").focus();paginate()});
 $("addCancel").addEventListener("click",()=>{$("addForm").hidden=true});
 $("addForm").addEventListener("submit",async e=>{
