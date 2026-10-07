@@ -252,6 +252,7 @@ body{font-size:1rem}
 .gnote{color:var(--muted);font-size:.85rem;margin:0}
 .dsum{display:flex;flex-wrap:wrap;gap:.35rem;margin:.1rem 0 .5rem}
 .dsum[hidden]{display:none}
+.press{margin:.5rem 0;padding:.45rem .6rem;border:1px solid var(--line);border-radius:10px;font-size:.9rem}.press.on{border:2px solid var(--ok)}.press ul{margin:.25rem 0 0;padding-left:1.1rem}.press li{margin:.1rem 0}.press li.cur{font-weight:700}.press .s{color:var(--muted);font-size:.82rem}
 .dsum.live{border:2px solid var(--ok);border-radius:10px;padding:.4rem .6rem;align-items:baseline;gap:.2rem .5rem}.dsum.live b{font-size:1.05rem}.dsum.live .s{font-size:.82rem;color:var(--muted)}
 .dsum .lbl{font-size:.85rem;color:var(--muted);align-self:center;margin-right:.2rem}
 .dsum button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.2rem .7rem;cursor:pointer}
@@ -552,6 +553,22 @@ function dnBox(d,t,c){
    ${glOpen?`<div class="glo" role="dialog" aria-label="용어 설명"><div class="glh"><button type="button" class="back" data-glback="1">← 뒤로</button><b>디티피아 칸 용어 설명</b></div><div class="glg"><div class="gi"><div class="gt"><span class="tag tr">● 기록</span></div><div class="gd">초록 실선 칸. 웹하드에 시각이 남은 것 그대로</div></div><div class="gi"><div class="gt"><span class="tag te">◌ 추정</span></div><div class="gd">주황 점선 칸. 다음 판 내린 시각으로 짐작, 틀릴 수 있음</div></div><div class="gi"><div class="gt"><span class="pn">527대</span></div><div class="gd">판번호, 디티피아가 붙인 번호</div></div><div class="gi"><div class="gt">판수</div><div class="gd">그 건에 드는 판 장수. 1도 = 1판, 돈땡은 반</div></div><div class="gi"><div class="gt">장수</div><div class="gd">인쇄할 종이 장수(주문서 기준)</div></div><div class="gi"><div class="gt">CIP 도착</div><div class="gd">판 파일이 CIP에 들어왔는지</div></div><div class="gi"><div class="gt">인쇄 시작</div><div class="gd">기장이 판 파일을 웹하드에서 처음 내린 시각</div></div><div class="gi"><div class="gt">인쇄 끝</div><div class="gd">다음 건 판을 내린 시각, 판 교체 시간 포함</div></div><div class="gi"><div class="gt"><span class="rt">다시 09:37</span></div><div class="gd">같은 판 파일을 한 번 더 내린 시각, 새 건 아님</div></div><div class="gi"><div class="gt"><span class="yl">노란 줄</span></div><div class="gd">지금 기계에 걸린 건</div></div><div class="gi"><div class="gt"><span class="bm"><i></i>막대</span></div><div class="gd">걸린 시간, 길수록 오래 걸림</div></div><div class="gi"><div class="gt">▼ 칸</div><div class="gd">누르면 건별 표가 펼쳐짐</div></div><div class="gi"><div class="gt">낮조·밤조</div><div class="gd">같은 규칙으로 셈. 인쇄기 장수는 못 읽음</div></div></div></div>`:""}</div></div>`;
 }
 // 공장·인쇄 자세히 맨 위 '지금 기계' 한 줄(무옥님 10/7 13:35 "실시간으로"): 웹하드 내림 기록 그대로, 화면은 5초마다 새로 읽음
+// 건 카드 '🖨 판 내림': 웹하드 내림 기록(dn.own)에서 이 접수번호 판('_삼보_10-8_', '_삼보(소문사)_10-8_')만 골라 부분별로(무옥님 10/7 16:10 "여기도 현재 지금 뭐 찍고 있나 표시")
+// 지금 기계 = 모든 판(디티피아+삼보) 중 처음 내린 시각이 가장 늦은 것이 이 건 판일 때(추정). 끝 = 그 뒤에 다른 판을 내렸으면(추정)
+function pressHtml(r){const dn=data&&data.daily&&data.daily.dn,s=stepOf(r);if(!dn)return "";
+  const m=String(r.no||"").match(/(\d{1,2})\s*-\s*(\d{1,4})/),isP=s==="공장-인쇄";
+  if(!m)return isP?`<div class="press"><b>🖨 판 내림</b> <span class="s">접수번호가 없어 웹하드 기록과 못 맞춤</span></div>`:"";
+  const re=new RegExp(`_삼보(?:\\([^)]*\\))?_${+m[1]}-${+m[2]}_`),mine=(dn.own||[]).filter(o=>re.test(o.name||""));
+  if(!mine.length)return isP?`<div class="press"><b>🖨 판 내림</b> <span class="s">웹하드 기록 없음(최근 24시간)</span></div>`:"";
+  const hm=v=>String(v||"").slice(11,16),all=[...(dn.items||[]).map(x=>x.first),...(dn.own||[]).map(x=>x.first)].sort(),latest=all[all.length-1];
+  const partOf=o=>{const seg=String(o.name).split("_");return (seg[seg.length-1]||"판").replace(/\[\d+\]$/,"").replace(/-[CMYK]$/i,"")};
+  const g={};mine.forEach(o=>{const part=partOf(o),side=(String(o.name).match(/^(\d{1,3}[AB])/)||[])[1]||"";
+    const x=g[part]||(g[part]={part,sides:new Set(),first:o.first,maxFirst:o.first,again:""});if(side)x.sides.add(side);if(o.first<x.first)x.first=o.first;if(o.first>x.maxFirst)x.maxFirst=o.first;
+    const l=o.last||o.first;if(hm(l)!==hm(o.first)&&l>x.again)x.again=l});   // 다시 = 같은 파일을 나중에 또 내린 것
+  const parts=Object.values(g).sort((a,b)=>a.first<b.first?-1:1),now=mine.some(o=>o.first===latest)?mine.filter(o=>o.first===latest):null;
+  const li=parts.map(x=>{const cur=!!now&&now.some(o=>partOf(o)===x.part),after=all.some(t=>t>x.maxFirst&&!mine.some(o=>o.first===t&&partOf(o)===x.part));
+    return `<li class="${cur?"cur":""}">${esc(x.part)}${x.sides.size?" "+[...x.sides].sort().join("·"):""} <span class="s">${hm(x.first)} 내림${x.again?" · "+hm(x.again)+" 다시":""}</span>${cur?" · 🖨 지금 기계(추정)":after?" · 끝(추정)":""}</li>`}).join("");
+  return `<div class="press${now?" on":""}"><b>🖨 판 내림</b> <span class="s">웹하드 기록 · ${(+mine[0].first.slice(5,7))}/${+mine[0].first.slice(8,10)}</span><ul>${li}</ul></div>`}
 function liveNow(d){const dn=d&&d.dn;if(!dn||!(dn.items||[]).length)return "";
   // 낮엔 어젯밤 주문(예 1006)을 찍는데 13:30부터 일량은 오늘(1007)로 바뀜 → 날짜 상관없이 '가장 늦게 처음 내린 판'을 보여 주고, 같은 날 목록일 때만 품종·n/전체를 붙임(10/7 14:00)
   const st={};dn.items.forEach(x=>{const k=x.md+"|"+x.pan;if(!st[k]||x.first<st[k].t)st[k]={t:x.first,md:x.md,pan:x.pan}});
@@ -630,6 +647,7 @@ function render(){
       ${op?`<div class="body">
       <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${qtyTxt(r)}</span>`:""}<span>${k==="design"?"디자인+인쇄":k==="wow"?"외주(와우프레스)":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
       ${known?`<div class="chain">${ord.map((x,j)=>{const done=fin||(i>=0&&j<i),cur=fin?x===DONE:j===i;return `<span class="${cur?"cur "+(fin?"fin":SK[x].lane):done?"done":""}">${done?"✓ ":""}${x===DONE?"끝":esc(SK[x].l)}</span>`}).join('<i>›</i>')}</div>`:`<span class="now bad">단계 확인필요: ${esc(s)}</span>`}
+      ${pressHtml(r)}
       ${itemsHtml(r)}
       ${didHtml(r,fStep&&fStep!==WOWCELL.key?fStep:s)}
       ${r.note?`<div class="note">${esc(r.note)}</div>`:""}
