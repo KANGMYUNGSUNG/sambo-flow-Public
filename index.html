@@ -252,7 +252,7 @@ body{font-size:1rem}
 .gnote{color:var(--muted);font-size:.85rem;margin:0}
 .dsum{display:flex;flex-wrap:wrap;gap:.35rem;margin:.1rem 0 .5rem}
 .dsum[hidden]{display:none}
-.press{margin:.5rem 0;padding:.45rem .6rem;border:1px solid var(--line);border-radius:10px;font-size:.9rem}.press.on{border:2px solid var(--ok)}.press ul{margin:.25rem 0 0;padding-left:1.1rem}.press li{margin:.1rem 0}.press li.cur{font-weight:700}.press .s{color:var(--muted);font-size:.82rem}
+.press{margin:.5rem 0;padding:.45rem .6rem;border:1px solid var(--line);border-radius:10px;font-size:.9rem}.press.on{border:2px solid var(--ok)}.press ul{margin:.25rem 0 0;padding-left:1.1rem}.press li{margin:.1rem 0}.press li.cur{font-weight:700}.press .s{color:var(--muted);font-size:.82rem}.press .pi{color:var(--ok)}.press .pe{color:var(--muted)}
 .dsum.live{border:2px solid var(--ok);border-radius:10px;padding:.4rem .6rem;align-items:baseline;gap:.2rem .5rem}.dsum.live b{font-size:1.05rem}.dsum.live .s{font-size:.82rem;color:var(--muted)}
 .dsum .lbl{font-size:.85rem;color:var(--muted);align-self:center;margin-right:.2rem}
 .dsum button{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.2rem .7rem;cursor:pointer}
@@ -560,15 +560,17 @@ function pressHtml(r){const dn=data&&data.daily&&data.daily.dn,s=stepOf(r);if(!d
   if(!m)return isP?`<div class="press"><b>🖨 판 내림</b> <span class="s">접수번호가 없어 웹하드 기록과 못 맞춤</span></div>`:"";
   const re=new RegExp(`_삼보(?:\\([^)]*\\))?_${+m[1]}-${+m[2]}_`),mine=(dn.own||[]).filter(o=>re.test(o.name||""));
   if(!mine.length)return isP?`<div class="press"><b>🖨 판 내림</b> <span class="s">웹하드 기록 없음(최근 24시간)</span></div>`:"";
-  const hm=v=>String(v||"").slice(11,16),all=[...(dn.items||[]).map(x=>x.first),...(dn.own||[]).map(x=>x.first)].sort(),latest=all[all.length-1];
+  const hm=v=>String(v||"").slice(11,16),all=[...(dn.items||[]),...(dn.own||[])].flatMap(x=>[x.first,x.last||x.first]).sort(),latest=all[all.length-1];
+  // 판은 찍다가 빼고 다른 걸로 바꿀 수 있음(무옥님 10/7 16:14) → 같은 판을 다시 내리면 그 시각부터 다시 '인쇄중'. 기준 = 부분별 마지막 내림(처음·다시 중 늦은 것)
   const partOf=o=>{const seg=String(o.name).split("_");return (seg[seg.length-1]||"판").replace(/\[\d+\]$/,"").replace(/-[CMYK]$/i,"")};
   const g={};mine.forEach(o=>{const part=partOf(o),side=(String(o.name).match(/^(\d{1,3}[AB])/)||[])[1]||"";
     const x=g[part]||(g[part]={part,sides:new Set(),first:o.first,maxFirst:o.first,again:""});if(side)x.sides.add(side);if(o.first<x.first)x.first=o.first;if(o.first>x.maxFirst)x.maxFirst=o.first;
     const l=o.last||o.first;if(hm(l)!==hm(o.first)&&l>x.again)x.again=l});   // 다시 = 같은 파일을 나중에 또 내린 것
-  const parts=Object.values(g).sort((a,b)=>a.first<b.first?-1:1),now=mine.some(o=>o.first===latest)?mine.filter(o=>o.first===latest):null;
-  const li=parts.map(x=>{const cur=!!now&&now.some(o=>partOf(o)===x.part),after=all.some(t=>t>x.maxFirst&&!mine.some(o=>o.first===t&&partOf(o)===x.part));
-    return `<li class="${cur?"cur":""}">${esc(x.part)}${x.sides.size?" "+[...x.sides].sort().join("·"):""} <span class="s">${hm(x.first)} 내림${x.again?" · "+hm(x.again)+" 다시":""}</span>${cur?" · 🖨 지금 기계(추정)":after?" · 끝(추정)":""}</li>`}).join("");
-  return `<div class="press${now?" on":""}"><b>🖨 판 내림</b> <span class="s">웹하드 기록 · ${(+mine[0].first.slice(5,7))}/${+mine[0].first.slice(8,10)}</span><ul>${li}</ul></div>`}
+  const parts=Object.values(g).sort((a,b)=>a.first<b.first?-1:1);parts.forEach(x=>x.act=x.again>x.maxFirst?x.again:x.maxFirst);
+  const curP=parts.find(x=>x.act===latest),now=!!curP;
+  const li=parts.map(x=>{const cur=x===curP,after=all.some(t=>t>x.act);
+    return `<li class="${cur?"cur":""}">${esc(x.part)}${x.sides.size?" "+[...x.sides].sort().join("·"):""} <span class="s">${hm(x.first)} 내림${x.again?" · "+hm(x.again)+" 다시":""}</span>${cur?` · <b class="pi">🖨 인쇄중</b>`:after?` · <span class="pe">인쇄끝</span>`:""}</li>`}).join("");
+  return `<div class="press${now?" on":""}"><b>🖨 판 내림</b> <span class="s">웹하드 내림 기준(판 바꾸면 달라질 수 있음) · ${(+mine[0].first.slice(5,7))}/${+mine[0].first.slice(8,10)}</span><ul>${li}</ul></div>`}
 function liveNow(d){const dn=d&&d.dn;if(!dn||!(dn.items||[]).length)return "";
   // 낮엔 어젯밤 주문(예 1006)을 찍는데 13:30부터 일량은 오늘(1007)로 바뀜 → 날짜 상관없이 '가장 늦게 처음 내린 판'을 보여 주고, 같은 날 목록일 때만 품종·n/전체를 붙임(10/7 14:00)
   const st={};dn.items.forEach(x=>{const k=x.md+"|"+x.pan;if(!st[k]||x.first<st[k].t)st[k]={t:x.first,md:x.md,pan:x.pan}});
