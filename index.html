@@ -369,6 +369,9 @@ const firstAt=r=>(r.log&&r.log[0]&&r.log[0].at)||r.at||"99-99";
 const noKey=r=>{const m=String(r.no||"").match(/(\d+)\s*-\s*(\d+)/);return m?(+m[1])*10000+(+m[2]):99999999};
 // 건별 현황: 영업공유 접수대장 순서(접수번호 오래된 것 위), 대장 번호 없는 견적 건은 그 뒤에 날짜순(무옥님 10/5 21:58)
 const byLedger=(a,b)=>(!a.no-!b.no)||(a.no&&b.no?noKey(a)-noKey(b):0)||String(firstAt(a)).localeCompare(String(firstAt(b)))||a.row-b.row;
+// 공장·인쇄 칸만 '마지막으로 바뀐 시각'(기록 맨 끝, MM-dd HH:mm)이 늦은 것 = 최신이 맨 위(무옥님 10/7 13:32)
+const lastAt=r=>{const l=r.log||[];return String((l.length&&l[l.length-1].at)||r.at||"")};
+const byNewIn=(a,b)=>lastAt(b).localeCompare(lastAt(a))||String(firstAt(b)).localeCompare(String(firstAt(a)))||b.row-a.row;
 const byOld=(a,b)=>String(firstAt(a)).localeCompare(String(firstAt(b)))||noKey(a)-noKey(b)||a.row-b.row;
 const num=v=>{const n=parseFloat(String(v??"").replace(/,/g,""));return isFinite(n)?n:null};
 function itemsSum(r){const it=r.items||[];if(!it.length)return "";const d={};let q=0,y=0,qa=true,ya=true;
@@ -592,7 +595,7 @@ function render(){
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
     if(lane&&(fin||SK[s]?.lane!==lane))return false;
     if(sales&&(r.sales||"담당 확인")!==sales)return false;if(client&&(r.client||"거래처 미정")!==client)return false;return true})
-    .sort(byLedger); // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순
+    .sort(fStep==="공장-인쇄"?byNewIn:byLedger); // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순. 단 공장·인쇄 칸은 최신이 맨 위(무옥님 10/7 13:32)
   // 진행 중 한눈에: 지금 어느 단계에 몇 건인지(흐름 순서대로) — 누르면 그 단계만
   const sumEl=$("dSum");
   if(!fStep&&!fLate&&!fStale&&dn!=="done"){
