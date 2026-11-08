@@ -385,6 +385,8 @@ const HOLD="보류";SK[HOLD]={lane:"hold",l:"보류",t:"결정 기다림",key:HO
 const AFTER="공장-인쇄 끝 · 후가공/납품 중",AFTER_OLD=["공장-코팅·후가공","공장-제본","공장-납품","관리-거래명세표","관리-계산서 확인 메일","관리-세금계산서 발행","관리-입금 확인"];
 const ARCH_DAYS=7; // 인쇄 끝 칸에 이 날수 넘게 있으면 첫 화면에서 빠져 📦보관함('서류 확인 전')으로(지우지 않음)
 const P=["영업-견적 요청 받음","영업-견적 보냄","영업-제작 요청·접수"],W=STEPS.filter(s=>/^공장-와우/.test(s.key)).map(s=>s.key),F=STEPS.filter(s=>(s.lane==="factory"||s.lane==="admin")&&!W.includes(s.key)).map(s=>s.key);
+// 메일로 견적만 오간 줄(11/8 무옥님 "이멜보낸건 빼줘 항상"): 이 두 단계는 화면 목록·숫자·단계 칸에서 모두 뺌. 시트 줄은 그대로, 제작 요청·접수로 넘어가면 다시 보임
+const QHIDE=["영업-견적 요청 받음","영업-견적 보냄"];
 const WOWCELL={lane:"factory",l:"외주(와우프레스)",t:"주문·제작·출고",key:"외주(와우프레스)"};
 const ORDER={wow:[...P,...W,DONE],print:[...P,...F,DONE],design:["디자인-디자인 요청","디자인-편집 작업","디자인-거래처 컨펌","영업-견적 보냄","디자인-최종 파일 전달","영업-제작 요청·접수",...F,DONE]};
 const BY="흐름표 화면"; // 이름 고르기 없앰(무옥님 10/5) — 바꾼 사람 칸엔 이 글자
@@ -698,7 +700,7 @@ function render(){
   const wowList=rows.filter(r=>W.includes(stepOf(r)));
   fillClients(rows);
   $("lanes").innerHTML=LANES.map(L=>`<div class="lane" data-l="${L.k}"><div class="lane-name">${L.name}<small>${L.sub}</small></div>
-    <div class="row">${[...STEPS.filter(s=>s.lane===L.k&&!W.includes(s.key)),...(L.k==="factory"&&wowList.length?[WOWCELL]:[])].map((s,i,a)=>{const n=s===WOWCELL?units(wowList):counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(s===WOWCELL?wowList:by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
+    <div class="row">${[...STEPS.filter(s=>s.lane===L.k&&!W.includes(s.key)&&!QHIDE.includes(s.key)),...(L.k==="factory"&&wowList.length?[WOWCELL]:[])].map((s,i,a)=>{const n=s===WOWCELL?units(wowList):counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(s===WOWCELL?wowList:by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
   requestAnimationFrame(fitSteps);
   const open=rows.filter(r=>stepOf(r)!==DONE),held=open.filter(r=>stepOf(r)===HOLD);
   const byLane=k=>units(open.filter(r=>SK[stepOf(r)]?.lane===k));
@@ -826,6 +828,7 @@ function showOpen(){const box=$("listbox"),c=document.querySelector("#list .card
 function openDrawer(){if($("drawer").hidden){pageStarts=[0]}$("drawer").hidden=false;$("shade").hidden=false;render()}
 function closeDrawer(){openRow=null;pinRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fWatch="";pageStarts=[0];render()}
 function onData(d){
+  d.rows=(d.rows||[]).filter(r=>!QHIDE.includes(stepOf(r)));
   const sig={};(d.rows||[]).forEach(r=>{const {row,...rest}=r;sig[rowKey(r)]=JSON.stringify(rest)});
   if(!firstLoad){const c=Object.keys(sig).filter(k=>prevSig[k]!==sig[k]);if(c.length){changed=new Set(c);clearTimeout(onData.h);onData.h=setTimeout(()=>{changed.clear();render()},15000)}}
   prevSig=sig;firstLoad=false;data=d;lastOk=Date.now();
