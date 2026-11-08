@@ -285,6 +285,24 @@ body{font-size:1rem}
 .daily .pb .pt td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}.daily .pb .pt tbody tr:nth-child(even) td{background:var(--chip)}.daily .pb .pt tbody tr.hl td,.daily .pb .pt tbody tr.cur td{background:var(--stale-bg)}
 .daily .pb .pt.kv th{width:30%;font-size:.86rem;border-bottom:1px solid var(--line);padding:7px 6px}.daily .pb .pn{display:inline-block;min-width:2.6em;text-align:center;font-family:var(--mono);font-weight:700;font-size:.95rem;background:var(--ink);color:var(--surface);border-radius:6px;padding:1px 6px}
 .daily .pb .tm{font-family:var(--mono);font-weight:700;white-space:nowrap}.daily .pb .rt{display:inline-block;font-size:.74rem;color:#fff;background:var(--warn);border-radius:5px;padding:0 5px;margin-left:4px;white-space:nowrap}
+/* 11/8 자동 상태·오늘 꼭 볼 것·D-day·다음 할 일·금요일 점검 */
+.auto{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:.82rem;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px}
+.auto b{color:var(--ink);font-weight:500}.auto .w{color:var(--warn);font-weight:700}.auto .bad{color:var(--late);font-weight:700}.auto .ok{color:var(--done)}
+.watch{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.watch h2{grid-column:1/-1;font-size:.95rem}
+.watch button{font:inherit;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--muted);font-size:.85rem}
+.watch button b{display:block;font-family:var(--mono);font-size:1.5rem;color:var(--ink);line-height:1.2}
+.watch button.on{border-color:var(--late);background:var(--late-bg)}.watch button.on b{color:var(--late)}
+.watch button.soft.on{border-color:var(--stale);background:var(--stale-bg)}.watch button.soft.on b{color:var(--ink)}
+@media (max-width:700px){.watch{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.dd{display:inline-block;font-size:.74rem;font-weight:700;border-radius:5px;padding:0 6px;margin-left:4px;white-space:nowrap;background:var(--chip);color:var(--ink)}
+.dd.late{background:var(--late);color:#fff}.dd.soon{background:var(--warn);color:#fff}.dd.none{background:transparent;border:1px dashed var(--muted);color:var(--muted);font-weight:500}
+.rw{display:inline-block;font-size:.74rem;font-weight:700;border-radius:5px;padding:0 6px;margin-left:4px;background:var(--design-bg);color:var(--design)}
+.nxl{display:block;font-size:.8rem;color:var(--accent)}
+.nx{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:6px 0}.nx label{display:grid;gap:2px;font-size:.78rem;color:var(--muted)}.nx input{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);min-width:9em}.nx label.w input{min-width:16em}
+.holdbox{border:1px dashed var(--stale);border-radius:8px;padding:6px 10px;margin:6px 0;font-size:.88rem}
+.fri{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px}.fri summary{cursor:pointer;font-weight:700}.fri summary small{font-weight:400;color:var(--muted);margin-left:6px}
+.fri h3{font-size:.9rem;margin:10px 0 4px}.fri ul{margin:0;padding-left:18px}.fri li{cursor:pointer;padding:2px 0}.fri li:hover{text-decoration:underline}.fri .muted{color:var(--muted);font-size:.85rem}
+.daily .cmp{font-size:.8rem;color:var(--muted);margin-left:8px}
 .daily .pb .br{position:relative;height:20px;background:var(--chip);border-radius:5px;min-width:90px}.daily .pb .br i{position:absolute;left:0;top:0;bottom:0;background:var(--stale);opacity:.55;border-radius:5px}.daily .pb .br b{position:relative;padding-left:6px;line-height:20px;font-size:.9rem}
 </style>
 </head>
@@ -305,6 +323,8 @@ body{font-size:1rem}
     <div class="livebox"><span class="dot stale" id="dot"></span><span id="liveTxt">불러오는 중…</span><span class="clock" id="clock"></span></div>
   </header>
   <div class="mock" id="mock" hidden>미리보기 화면이야. 예시 건은 진짜가 아니고 저장도 안 돼.</div>
+  <div class="auto" id="auto" hidden aria-label="자동 상태"></div>
+  <section class="watch" id="watch" aria-label="오늘 꼭 볼 것"></section>
   <div class="crow">
     <div class="kpis" id="kpis"></div>
     <div id="wk"></div>
@@ -313,8 +333,9 @@ body{font-size:1rem}
 
 
   <section class="daily" id="daily" hidden aria-label="오늘 저녁 일량"></section>
+  <details class="fri" id="fri"><summary>🗓 금요일 15분 점검 <small>지연·임박 / 재작업 / 보류·결정 필요</small></summary><div id="friBody"></div></details>
 
-  <p class="legend">건마다 왼쪽 색 줄: <i class="r">● 납품일 지남</i><i class="y">● 7일째 그대로</i><i class="g">● 순조</i></p>
+  <p class="legend">건마다 왼쪽 색 줄: <i class="r">● 납품일 지남</i><i class="y">● 단계가 오래 그대로(영업·디자인 7일, 공장 9일)</i><i class="g">● 순조</i></p>
   <section class="lanes" id="lanes" aria-label="공정 흐름"></section>
 
   <div class="shade" id="shade" hidden></div>
@@ -326,6 +347,7 @@ body{font-size:1rem}
       <select id="fSales" aria-label="영업 담당"><option value="">영업 담당 전체</option><option>강명성</option><option>김지열</option><option>박인규</option><option>담당 확인</option></select>
       <select id="fClient" aria-label="거래처"><option value="">거래처 전체</option></select>
       <select id="fDone" aria-label="진행 상태"><option value="open">진행 중만</option><option value="arch">📦 보관함 (서류 확인 전)</option></select>
+      <select id="fSort" aria-label="정렬"><option value="">기본 순서</option><option value="urgent">급한 순</option></select>
       <button type="button" class="b p" id="addBtn">+ 새 건</button>
     </div>
     <form class="form" id="addForm" hidden>
@@ -357,6 +379,8 @@ const STEPS=[
 const SK=Object.fromEntries(STEPS.map(s=>[s.key,s]));
 const STEP_IDX=Object.fromEntries(STEPS.map((s,i)=>[s.key,i]));
 const DONE="끝";
+// 보류(11/8): 공정 줄엔 없고 '⏸ 보류' 칸·금요일 점검에서 봄. 이유는 Q칸. 자동 넘김(서류·CIP)은 보류 건을 안 건드림
+const HOLD="보류";SK[HOLD]={lane:"hold",l:"보류",t:"결정 기다림",key:HOLD};
 // 간소화(무옥님 10/5 21:15): 실시간 근거가 있는 건 디자인(메일)·인쇄(CIP)까지. 인쇄 뒤(코팅·후가공·제본·납품·관리)는 한 칸으로 묶음
 const AFTER="공장-인쇄 끝 · 후가공/납품 중",AFTER_OLD=["공장-코팅·후가공","공장-제본","공장-납품","관리-거래명세표","관리-계산서 확인 메일","관리-세금계산서 발행","관리-입금 확인"];
 const ARCH_DAYS=7; // 인쇄 끝 칸에 이 날수 넘게 있으면 첫 화면에서 빠져 📦보관함('서류 확인 전')으로(지우지 않음)
@@ -364,7 +388,7 @@ const P=["영업-견적 요청 받음","영업-견적 보냄","영업-제작 요
 const WOWCELL={lane:"factory",l:"외주(와우프레스)",t:"주문·제작·출고",key:"외주(와우프레스)"};
 const ORDER={wow:[...P,...W,DONE],print:[...P,...F,DONE],design:["디자인-디자인 요청","디자인-편집 작업","디자인-거래처 컨펌","영업-견적 보냄","디자인-최종 파일 전달","영업-제작 요청·접수",...F,DONE]};
 const BY="흐름표 화면"; // 이름 고르기 없앰(무옥님 10/5) — 바꾼 사람 칸엔 이 글자
-const laneName=k=>LANES.find(L=>L.k===k).name;
+const laneName=k=>k==="hold"?"⏸":LANES.find(L=>L.k===k).name;
 const stepName=k=>k===DONE?"끝":SK[k]?`${laneName(SK[k].lane)} · ${SK[k].l}`:k?String(k).replace(/^(영업|디자인|공장|관리)-/,"$1 · "):"단계 확인필요";
 // 세부(디티피아 등 한 접수 안의 여러 일): 무슨 일·몇 도·몇 부·몇 연. 없으면 확인필요
 // 오래된 순서: 처음 기록된 날짜(지나온 일 첫 줄, 없으면 바꾼 날짜) → 같으면 접수번호(S 9-1이 S 9-2보다 먼저)
@@ -403,7 +427,7 @@ const API=(document.querySelector('meta[name="flow-api"]')||{}).content||"";
 const GS=!!(window.google&&google.script&&google.script.run);
 const MOCK=!GS&&!API;
 function api(fn,args){return fetch(API,{method:"POST",credentials:"omit",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({fn,args})}).then(r=>r.json()).then(o=>{if(!o.ok)throw new Error(o.err||"연결이 안 돼.");return o.res})}
-let mockRows=[{row:2,no:"S 10-4",item:"(예시) 해커스 토익 750 LC",client:"해커스",qty:"3000",kind:"인쇄만",sales:"강명성",step:"공장-인쇄",due:"2026-10-02",by:"예시",at:"10-04 13:30",log:[{at:"09-24 10:12",step:"영업-견적 요청 받음",where:"해커스 출판팀 이OO 과장 (메일)",what:"토익 750 LC 3000부 견적 요청",by:"견적 메일 자동"},{at:"09-24 15:40",step:"영업-견적 보냄",where:"해커스 출판팀 이OO 과장 (메일 회신)",what:"토익 750 LC 3000부 · 내지 1도 · 표지 4도 코팅 견적서",by:"강명성"},{at:"09-26 09:05",step:"영업-제작 요청·접수",where:"해커스",what:"접수대장 S 10-4",by:"흐름표 화면"},{at:"10-01 11:20",step:"공장-CTP 출력",where:"SD 출력소 (팩스)",what:"작업지시서 들어옴",by:"작업지시서 자동"},{at:"10-04 13:30",step:"공장-인쇄",where:"사내 인쇄기",what:"CIP 판 데이터 들어옴",by:"CIP 자동"}]},{row:3,item:"(예시) 협회 리플렛",client:"예시협회",kind:"디자인+인쇄",sales:"김지열",step:"디자인-거래처 컨펌",due:"2026-10-20",log:[{at:"10-02 14:00",step:"디자인-디자인 요청",where:"예시협회 박OO 팀장 (전화)",what:"A4 3단 리플렛 디자인 상의",by:"김지열"},{at:"10-04 17:10",step:"디자인-거래처 컨펌",where:"예시협회 박OO 팀장 (메일)",what:"시안 1차 보냄, 회신 기다림",by:"디자인팀"}]},{row:5,no:"S 9-1",item:"(예시) 디티피아 9월 1차",client:"디티피아",kind:"인쇄만",sales:"박인규",step:"영업-제작 요청·접수",items:[{name:"(예시) 일반명함 스노우 250g",colors:"4",qty:"2,000",reams:"0.5"},{name:"(예시) A4 전단 아트 150g",colors:"4",qty:"8,000",reams:"2"},{name:"(예시) 봉투 소봉투 모조 120g",colors:"1",qty:"1,000",reams:"0.5"},{name:"(예시) 스티커 아트지",colors:"4",qty:"500",reams:""}],log:[{at:"09-01 18:40",step:"영업-제작 요청·접수",where:"디티피아 사이트 주문",what:"9월 1차 주문 4건",by:"디티피아 자동"}]},{row:6,no:"S 9-5",item:"(예시) 2027년 정시 모집요강",client:"경기대학교",qty:"30000",kind:"인쇄만",sales:"강명성",step:"영업-제작 요청·접수"},{row:4,item:"(예시) 동아전람 카탈로그",client:"동아전람",qty:"500",kind:"인쇄만",sales:"박인규",step:"영업-견적 보냄",log:[{at:"10-05 09:31",step:"영업-견적 요청 받음",where:"동아전람 최OO 대리 (메일)",what:"카탈로그 24면 500부 견적 요청",by:"견적 메일 자동"},{at:"10-05 14:03",step:"영업-견적 보냄",where:"동아전람 최OO 대리 (메일 회신)",what:"카탈로그 24면 500부 · 4도 · 무선제본 견적서",by:"견적 메일 자동"}]}];
+let mockRows=[{row:2,no:"S 10-4",item:"(예시) 해커스 토익 750 LC",client:"해커스",qty:"3000",kind:"인쇄만",sales:"강명성",step:"공장-인쇄",due:"2026-10-02",next:"(예시) 제본소 일정 확인",nextAt:"2026-11-10",redo:"(예시) 표지 색 다름",note:"(예시) 표지 먼저",by:"예시",at:"10-04 13:30",log:[{at:"09-24 10:12",step:"영업-견적 요청 받음",where:"해커스 출판팀 이OO 과장 (메일)",what:"토익 750 LC 3000부 견적 요청",by:"견적 메일 자동"},{at:"09-24 15:40",step:"영업-견적 보냄",where:"해커스 출판팀 이OO 과장 (메일 회신)",what:"토익 750 LC 3000부 · 내지 1도 · 표지 4도 코팅 견적서",by:"강명성"},{at:"09-26 09:05",step:"영업-제작 요청·접수",where:"해커스",what:"접수대장 S 10-4",by:"흐름표 화면"},{at:"10-01 11:20",step:"공장-CTP 출력",where:"SD 출력소 (팩스)",what:"작업지시서 들어옴",by:"작업지시서 자동"},{at:"10-04 13:30",step:"공장-인쇄",where:"사내 인쇄기",what:"CIP 판 데이터 들어옴",by:"CIP 자동"}]},{row:3,item:"(예시) 협회 리플렛",client:"예시협회",kind:"디자인+인쇄",sales:"김지열",step:"디자인-거래처 컨펌",due:"2026-10-20",log:[{at:"10-02 14:00",step:"디자인-디자인 요청",where:"예시협회 박OO 팀장 (전화)",what:"A4 3단 리플렛 디자인 상의",by:"김지열"},{at:"10-04 17:10",step:"디자인-거래처 컨펌",where:"예시협회 박OO 팀장 (메일)",what:"시안 1차 보냄, 회신 기다림",by:"디자인팀"}]},{row:5,no:"S 9-1",item:"(예시) 디티피아 9월 1차",client:"디티피아",kind:"인쇄만",sales:"박인규",step:"영업-제작 요청·접수",items:[{name:"(예시) 일반명함 스노우 250g",colors:"4",qty:"2,000",reams:"0.5"},{name:"(예시) A4 전단 아트 150g",colors:"4",qty:"8,000",reams:"2"},{name:"(예시) 봉투 소봉투 모조 120g",colors:"1",qty:"1,000",reams:"0.5"},{name:"(예시) 스티커 아트지",colors:"4",qty:"500",reams:""}],log:[{at:"09-01 18:40",step:"영업-제작 요청·접수",where:"디티피아 사이트 주문",what:"9월 1차 주문 4건",by:"디티피아 자동"}]},{row:6,no:"S 9-5",item:"(예시) 2027년 정시 모집요강",client:"경기대학교",qty:"30000",kind:"인쇄만",sales:"강명성",step:"영업-제작 요청·접수"},{row:7,no:"S 9-6",item:"(예시) 보류 건",client:"예시상사",kind:"인쇄만",sales:"박인규",step:"보류",hold:"(예시) 예산 결정 기다림",due:"2026-11-10",log:[{at:"11-01 10:00",step:"영업-제작 요청·접수",where:"예시상사",what:"접수",by:"예시"},{at:"11-03 10:00",step:"보류",where:"",what:"보류: 예산",by:"예시"}]},{row:4,item:"(예시) 동아전람 카탈로그",client:"동아전람",qty:"500",kind:"인쇄만",sales:"박인규",step:"영업-견적 보냄",log:[{at:"10-05 09:31",step:"영업-견적 요청 받음",where:"동아전람 최OO 대리 (메일)",what:"카탈로그 24면 500부 견적 요청",by:"견적 메일 자동"},{at:"10-05 14:03",step:"영업-견적 보냄",where:"동아전람 최OO 대리 (메일 회신)",what:"카탈로그 24면 500부 · 4도 · 무선제본 견적서",by:"견적 메일 자동"}]}];
 // 비밀번호 열쇠: 맞은 브라우저에만 저장(30일). 서버가 'LOGIN'이라 하면 비밀번호 칸을 다시 띄움
 let KEY=store.get("samboFlowKey")||"";
 function showGate(m){$("gate").hidden=false;$("gateMsg").textContent=m||"";$("gatePw").value="";setTimeout(()=>$("gatePw").focus(),50)}
@@ -415,11 +439,11 @@ function call(fn,...args){
     if(fn==="login"){res(args[0]==="0000"?{ok:true,key:"mock",days:30}:{ok:false,msg:"비밀번호가 달라. (4번 남음)"});return}
     if(fn==="update"){const r=mockRows.find(x=>x.row===args[0]),pt={...args[2]};const d=pt.detail;delete pt.detail;const old=r.step;Object.assign(r,pt,{by:args[3],at:"방금"});if((pt.step&&pt.step!==old)||d)(r.log=r.log||[]).push({at:"방금",step:r.step,where:d?d.where:"",what:d?d.what:"",by:args[3]})}
     if(fn==="addJob")mockRows.push({...args[0],row:mockRows.length+2,by:args[1],at:"방금"});
-    res({rows:JSON.parse(JSON.stringify(mockRows)),daily:{date:today(),dtpia:{asOf:"20:00",orders:23,plates:168,sheets:18975,list:[{date:"10-06",pan:"1대",kind:"일반명함",coat:"양면무광",paper:"스노우지 250g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"500",memo:"(예시) [긴급]…",cip:true},{date:"10-06",pan:"311대",kind:"카달로그(일반)",coat:"",paper:"미색모조 080g",cut:"국전",grain:"종목",colors:"5",side:"홍각계",sheets:"1,250",memo:"(예시) 표지_…",cip:true},{date:"10-06",pan:"312대",kind:"카달로그(일반)",coat:"",paper:"미색모조 080g",cut:"국전",grain:"종목",colors:"2",side:"홍각계",sheets:"2,500",memo:"(예시) 내지_…",cip:true},{date:"10-06",pan:"313대",kind:"카달로그(일반)",coat:"",paper:"미색모조 080g",cut:"국전",grain:"종목",colors:"2",side:"홍각계",sheets:"10,000",memo:"(예시) 내지_…",cip:false},{date:"10-06",pan:"326대",kind:"카달로그(일반)",coat:"",paper:"모조 180g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"500",memo:"(예시) 표지_…",cip:true},{date:"10-06",pan:"327대",kind:"카달로그(일반)",coat:"",paper:"모조 120g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"1,000",memo:"(예시) 내지_…",cip:true},{date:"10-06",pan:"328대",kind:"카달로그(일반)",coat:"단면무광",paper:"스노우지 250g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"500",memo:"(예시) 표지_…",cip:false},{date:"10-06",pan:"329대",kind:"카달로그(일반)",coat:"",paper:"미색모조 100g",cut:"2절",grain:"종목",colors:"8",side:"홍각계",sheets:"2,000",memo:"(예시) 내지_…",cip:true},{date:"10-06",pan:"330대",kind:"카달로그(일반)",coat:"",paper:"미색모조 100g",cut:"2절",grain:"종목",colors:"8",side:"홍각계",sheets:"1,000",memo:"(예시) 내지_…",cip:true}]},cip:{asOf:"21:40",arrived:20,expected:23,missing:["삼보-505B","삼보-506A","삼보-511A"]},sambo:[{time:"10:40",name:"(예시) K매거진 12면"}],reprint:[{name:"(예시) K매거진 12면",times:["09-21 10:40","09-22 18:37"]}]},now:new Date().toISOString().replace("T"," ").slice(0,19)})},200)});
+    res({rows:JSON.parse(JSON.stringify(mockRows)),daily:{date:today(),dtpia:{asOf:"20:00",orders:23,plates:168,sheets:18975,list:[{date:"10-06",pan:"1대",kind:"일반명함",coat:"양면무광",paper:"스노우지 250g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"500",memo:"(예시) [긴급]…",cip:true},{date:"10-06",pan:"311대",kind:"카달로그(일반)",coat:"",paper:"미색모조 080g",cut:"국전",grain:"종목",colors:"5",side:"홍각계",sheets:"1,250",memo:"(예시) 표지_…",cip:true},{date:"10-06",pan:"312대",kind:"카달로그(일반)",coat:"",paper:"미색모조 080g",cut:"국전",grain:"종목",colors:"2",side:"홍각계",sheets:"2,500",memo:"(예시) 내지_…",cip:true},{date:"10-06",pan:"313대",kind:"카달로그(일반)",coat:"",paper:"미색모조 080g",cut:"국전",grain:"종목",colors:"2",side:"홍각계",sheets:"10,000",memo:"(예시) 내지_…",cip:false},{date:"10-06",pan:"326대",kind:"카달로그(일반)",coat:"",paper:"모조 180g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"500",memo:"(예시) 표지_…",cip:true},{date:"10-06",pan:"327대",kind:"카달로그(일반)",coat:"",paper:"모조 120g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"1,000",memo:"(예시) 내지_…",cip:true},{date:"10-06",pan:"328대",kind:"카달로그(일반)",coat:"단면무광",paper:"스노우지 250g",cut:"국전",grain:"횡목",colors:"8",side:"홍각계",sheets:"500",memo:"(예시) 표지_…",cip:false},{date:"10-06",pan:"329대",kind:"카달로그(일반)",coat:"",paper:"미색모조 100g",cut:"2절",grain:"종목",colors:"8",side:"홍각계",sheets:"2,000",memo:"(예시) 내지_…",cip:true},{date:"10-06",pan:"330대",kind:"카달로그(일반)",coat:"",paper:"미색모조 100g",cut:"2절",grain:"종목",colors:"8",side:"홍각계",sheets:"1,000",memo:"(예시) 내지_…",cip:true}]},cip:{asOf:"21:40",arrived:20,expected:23,missing:["삼보-505B","삼보-506A","삼보-511A"]},sambo:[{time:"10:40",name:"(예시) K매거진 12면"}],reprint:[{name:"(예시) K매거진 12면",times:["09-21 10:40","09-22 18:37"]}]},auto:{min:3,atText:"예시",login:{"디티피아":"ok","와우":"필요"},last:{"디티피아":"11-07 20:00","작업지시서":"11-08 09:20","웹하드":"11-08 08:38","와우":"11-06 18:00"},dt:{"20261030":[14,80,18000],"20261031":[3,10,900],"20261106":[15,86,19160],"20261107":[0,0,0]}},now:new Date().toISOString().replace("T"," ").slice(0,19)})},200)});
   return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn](...args));
 }
 
-let pinRow=null,glOpen=false,pbSel="",dtOpen=false,openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fLate=false,fStale=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
+let pinRow=null,glOpen=false,pbSel="",dtOpen=false,openRow=null,histOpen=null,stepFromSum=false,dailyOpen=false,fWatch="",holdAsk=null,friOpen=false,pageStarts=[0],data=null,fStep=null,prevSig={},changed=new Set(),firstLoad=true,lastOk=0,busy=false,editing=null,detailOpen=null,pendingMove=null,deliv=null;
 // 고르기 칸은 기억하지 않음: 서랍을 열 때마다 늘 전체로 시작(무옥님 10/5 "거르기 풀기 필요 없으면 빼")
 const rowKey=r=>(r.no||"")+"|"+r.item;
 const kindOf=r=>/^공장-와우/.test(r.step||"")||/와우/.test(r.kind||"")?"wow":(r.kind||"").includes("디자인")?"design":"print";
@@ -441,7 +465,7 @@ const stepAt=(r,s)=>{const l=r.log||[];let j=-1;l.forEach((x,k)=>{if(normStep(x.
 const ageOf=md=>{if(!/^\d\d-\d\d$/.test(md))return null;const n=new Date(),y=n.getFullYear();let d=new Date(y,+md.slice(0,2)-1,+md.slice(3));const t=new Date(y,n.getMonth(),n.getDate());if(d>t)d=new Date(y-1,+md.slice(0,2)-1,+md.slice(3));return Math.round((t-d)/864e5)};
 const dWord=s=>s==="영업-견적 보냄"?"보냄":/견적 요청/.test(s)?"요청":"부터";
 const dAge=a=>a===0?"오늘":a+"일째";
-const dtHtml=(r,s)=>{const md=stepAt(r,s);if(!md)return "";const a=ageOf(md);return `<small class="dt${a>=7?" old":""}">${+md.slice(0,2)}/${+md.slice(3)} ${dWord(s)} · ${dAge(a)}</small>`};
+const dtHtml=(r,s)=>{const md=stepAt(r,s);if(!md)return "";const a=ageOf(md);return `<small class="dt${a>=staleLim(r)?" old":""}">${+md.slice(0,2)}/${+md.slice(3)} ${dWord(s)} · ${dAge(a)}</small>`};
 const afterAt=r=>{const l=(r.log||[]).filter(x=>normStep(x.step)===AFTER&&!/^관리-/.test(x.step||""));return (l.length?l[l.length-1].at:"")||r.at||""};
 // '납품 완료' 버튼으로 끝냈지만 서류 대조 전 → 보관함에 남김. 계산서 등 서류로 '끝'이 된 줄은 화면에서 사라짐(시트엔 남음, 무옥님 10/5 21:17)
 const isPend=r=>{if(stepOf(r)!==DONE)return false;const l=r.log||[];return /서류 대조 전/.test((l[l.length-1]||{}).what||"")};
@@ -451,7 +475,23 @@ const isArch=r=>{if(isPend(r))return true;if(stepOf(r)==="공장-와우 출고")
 // 4기법(무옥님 10/6 시안4): 납품일 지남 빨강 · 같은 단계 7일째 그대로 노랑 · 순조 초록
 const lastMd=r=>{const l=(r.log||[]).filter(x=>!/^(도수|사이즈) /.test(x.what||""));const a=String((l.length?l[l.length-1].at:r.at)||"").slice(0,5);return /^\d\d-\d\d$/.test(a)?a:""};
 const isLateR=r=>stepOf(r)!==DONE&&!!r.due&&r.due<today();
-const isStale=r=>{if(stepOf(r)===DONE||isArch(r))return false;const a=ageOf(lastMd(r));return a!=null&&a>=7};
+// 단계가 오래 그대로(11/8): 그 단계에 들어온 날부터 셈. 영업·디자인 7일, 공장 9일(김지열 부장 건은 금요일 영업공유로 주 1회 반영)
+const staleLim=r=>SK[stepOf(r)]?.lane==="factory"?9:7;
+const stayDays=r=>ageOf(stepAt(r,stepOf(r))||lastMd(r));
+const isStale=r=>{const s=stepOf(r);if(s===DONE||s===HOLD||isArch(r))return false;const a=stayDays(r);return a!=null&&a>=staleLim(r)};
+// 오늘 꼭 볼 것 5칸(11/8). 누르면 그 건들만 거름. 사람별 순위·개수 세기 없음
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+const isQuote=r=>/^영업-견적/.test(stepOf(r));
+const WAIT=["영업-견적 보냄","디자인-거래처 컨펌"];
+const WATCH={late:{l:"납품일 지남",f:r=>!!r.due&&r.due<today()},soon:{l:"3일 안 납품",f:r=>!!r.due&&r.due>=today()&&r.due<=addDays(3)},
+  wait:{l:"고객 답 기다림",f:r=>WAIT.includes(stepOf(r)),soft:1},stale:{l:"단계가 오래 그대로",f:isStale,soft:1},nodue:{l:"납품일 빈칸",f:r=>!r.due&&!isQuote(r),soft:1}};
+// D-day 배지: 지남 빨강 · 3일 안 주황 · 빈칸(견적 단계 빼고)
+const ddHtml=r=>{if(stepOf(r)===DONE)return "";if(!r.due)return isQuote(r)?"":`<span class="dd none">납품일 빈칸</span>`;
+  const n=Math.round((new Date(r.due)-new Date(today()))/864e5);return `<span class="dd${n<0?" late":n<=3?" soon":""}">${n<0?-n+"일 지남":n===0?"D-day":"D-"+n} · ${esc(r.due.slice(5))}</span>`};
+// 급한 순: 지난 것(오래 지난 것 위) → 납품일 가까운 것 → 빈칸
+const byUrgent=(a,b)=>(a.due||"9999")<(b.due||"9999")?-1:(a.due||"9999")>(b.due||"9999")?1:byLedger(a,b);
+// 메모는 카드에 앞 60자만, 금액 모양 숫자는 가림(11/8)
+const memoTxt=v=>String(v||"").replace(/₩\s*[\d,.]+|[\d][\d,.]*\s*(만\s*원|원)|\d{1,3}(,\d{3})+/g,"•••").slice(0,60);
 const colorOf=r=>isLateR(r)?"c-late":isStale(r)?"c-stale":"c-ok";
 const weekLine=all=>{const n=new Date(),wd=(n.getDay()+6)%7;const inW=md=>{const a=ageOf(String(md||"").slice(0,5));return a!=null&&a<=wd};
   const got=all.filter(r=>{const l=r.log||[];return l.length&&inW(l[0].at)}).length;
@@ -581,7 +621,7 @@ function pressHtml(r){const d=pressData(r),isP=stepOf(r)==="공장-인쇄";if(!d
 const ING={"영업-견적 요청 받음":["📝 견적 만드는 중","y"],"영업-견적 보냄":["⏳ 거래처 답 기다리는 중","y"],"영업-제작 요청·접수":["📋 작업 준비 중","b"],
   "디자인-디자인 요청":["✏ 디자인 준비 중","b"],"디자인-편집 작업":["✏ 편집 중","b"],"디자인-거래처 컨펌":["⏳ 거래처 확인 기다리는 중","y"],"디자인-최종 파일 전달":["📤 인쇄 파일 넘기는 중","b"],
   "공장-작업지시서·발주":["📦 용지·코팅 발주 중","b"],"공장-CTP 출력":["🖨 판 출력 중","b"],[AFTER]:["✔ 인쇄끝 · 후가공·납품 중","g"],
-  "공장-와우 주문":["🛒 와우 주문 넣는 중","b"],"공장-와우 제작 중":["🏭 와우 제작 중","b"],"공장-와우 출고":["🚚 배송 중","b"]};
+  "공장-와우 주문":["🛒 와우 주문 넣는 중","b"],"공장-와우 제작 중":["🏭 와우 제작 중","b"],"공장-와우 출고":["🚚 배송 중","b"],[HOLD]:["⏸ 보류 · 결정 기다리는 중","q"]};
 function ingOf(r,s){
   if(s==="공장-인쇄"){const d=pressData(r);
     if(d&&d.curP)return [`🖨 인쇄중 · ${d.curP.part} ${d.hm(d.curP.act)}~`,"g"];
@@ -600,6 +640,12 @@ function liveNow(d){const dn=d&&d.dn;if(!dn||!(dn.items||[]).length)return "";
   const x=same&&L.find(y=>pn(y)===top.pan)||{pan:top.pan+"대"},mdT=`${+top.md.slice(0,2)}/${+top.md.slice(2)}`;
   const n=same?L.filter(y=>Object.values(st).some(q=>q.md===top.md&&q.pan===pn(y))).length:Object.values(st).filter(q=>q.md===top.md).length;
   return `<span class="lbl">🖨 지금 기계</span><b>${esc(x.pan)} ${esc(x.kind||"")}</b> <span class="s">${hm(top.t)} 내림 · ${mdT} 디티피아 ${n}${same?`/${L.length}`:""}건 시작 · 웹하드 ${esc(hm(dn.asOf))} 기준</span>`}
+// 디티피아 비교(11/8): 어제·지난주 같은 요일 마지막 일량(PC가 디티피아_일량_YYYYMMDD.csv 마지막 줄을 보냄). 토·일 0건은 정상
+function dtCmp(d){const m=(data&&data.auto&&data.auto.dt)||{};if(!Object.keys(m).length)return "";
+  const k=n=>{const x=new Date(d.date);x.setDate(x.getDate()-n);return [x.getFullYear(),pad(x.getMonth()+1),pad(x.getDate()),"일월화수목금토"[x.getDay()]]};
+  const v=n=>{const [y,mo,da,w]=k(n),q=m[y+mo+da];return q?`${q[0]}건·${q[1]}판`:(w==="일"||w==="토")?"주문 없는 날":"-"};
+  const wd="일월화수목금토"[new Date(d.date).getDay()],zero=Number(d.dtpia&&d.dtpia.orders)===0&&(wd==="토"||wd==="일");
+  return `<span class="cmp">${zero?"오늘은 주문 없는 날(정상) · ":""}어제 ${v(1)} · 지난주 ${wd} ${v(7)}</span>`}
 function renderDaily(){
   const d=data&&data.daily,el=$("daily");
   // 오늘 자료가 아직 없으면(아침~13시) 가장 최근 날 자료를 날짜 붙여 보여 줌(무옥님 10/7 "디티피아가 빠졌는데?"). 3일 넘은 자료는 숨김
@@ -619,9 +665,30 @@ function renderDaily(){
       const v=x=>esc(x==null||x===""?"-":x),cip=x=>x.cip===true?`<span class="ok">✓ 도착</span>`:x.cip===false?`<span class="no">아직</span>`:"";
       const tr=L.map(x=>`<tr><td class="m1"><span class="pan">${v(x.pan)}</span> ${v(x.kind)} · <b>${v(x.sheets)}</b>장 ${cip(x)}</td><td class="d" data-l="일자">${v(x.date)}</td><td class="pan h">${v(x.pan)}</td><td class="h">${v(x.kind)}</td><td data-l="코팅">${v(x.coat)}</td><td data-l="자재명">${v(x.paper)}</td><td data-l="절수">${v(x.cut)}</td><td data-l="결구분">${v(x.grain)}</td><td data-l="인쇄색도">${v(x.colors)}</td><td data-l="면">${v(x.side)}</td><td class="n h">${v(x.sheets)}</td><td class="memo" data-l="비고">${v(x.memo)}</td><td class="h">${cip(x)}</td></tr>`).join("");
       return `<details id="dtList"${dtOpen?" open":""}><summary class="nums">${nums}<span class="go">▸ 판 목록</span></summary><button type="button" class="back sm" data-back="dt">← 뒤로</button>
-        ${""}<table class="dtt"><thead><tr><th>일자</th><th>판번호</th><th>품종</th><th>코팅</th><th>자재명</th><th>절수</th><th>결구분</th><th>인쇄색도</th><th>면</th><th>인쇄장수</th><th>비고</th><th>CIP</th></tr></thead><tbody>${tr}</tbody></table></details>${pbx}`})()}
+        <div>${dtCmp(d)}</div><table class="dtt"><thead><tr><th>일자</th><th>판번호</th><th>품종</th><th>코팅</th><th>자재명</th><th>절수</th><th>결구분</th><th>인쇄색도</th><th>면</th><th>인쇄장수</th><th>비고</th><th>CIP</th></tr></thead><tbody>${tr}</tbody></table></details>${pbx}`})()}
     ${cnt?`<details id="dailyMore"${dailyOpen?" open":""}><summary>▸ 자세히 보기 (${[miss.length?"빠진 판 "+miss.length:"",sb.length?"삼보 일 "+sb.length:"",rp.length?"재출력 의심 "+rp.length:""].filter(Boolean).join(" · ")})</summary><button type="button" class="back sm" data-back="daily">← 뒤로</button>${more}</details>`:""}`;
   el.hidden=false;
+}
+// 자동 상태 한 줄(11/8): PC 신호·자동 작업 마지막 시각·로그인 풀림. 토·일 디티피아 0건은 정상 문구
+const AUTO_NAMES=[["디티피아","디티피아"],["작업지시서","작업지시서 감시"],["웹하드","웹하드 내림"],["와우","와우"]];
+function renderAuto(){
+  const a=data&&data.auto,el=$("auto");if(!a){el.hidden=true;return}
+  const n=new Date(),md=`${pad(n.getMonth()+1)}-${pad(n.getDate())}`,tm=v=>v.slice(0,5)===md?v.slice(6):`${+v.slice(0,2)}/${+v.slice(3,5)} ${v.slice(6)}`;
+  const old=v=>{const g=ageOf(v.slice(0,5));return g!=null&&g>=2}; // 이틀 넘게 소식 없으면 주황
+  const d=data.daily,wk=[0,6].includes(n.getDay()),dt0=wk&&!(d&&d.date===today()&&Number(d.dtpia&&d.dtpia.orders)>0);
+  const parts=[a.min>30?`<span class="bad">🔔 PC 신호 끊김 (${a.min}분째)</span>`:`<span class="ok">● PC 신호 ${a.min}분 전</span>`];
+  AUTO_NAMES.forEach(([k,lab])=>{const v=(a.last||{})[k];
+    parts.push(k==="디티피아"&&dt0?`<span>${lab} <b>오늘은 주문 없는 날(정상)</b></span>`:`<span>${lab} <b class="${v&&old(v)?"w":""}">${v?esc(tm(v)):"기록 없음"}</b></span>`)});
+  Object.keys(a.login||{}).forEach(k=>{if(!/^ok$/i.test(a.login[k]))parts.push(`<span class="bad">🔑 ${esc(k)} 로그인 필요</span>`)});
+  el.innerHTML=`<span>🤖 자동 상태</span>`+parts.join("");el.hidden=false;
+}
+// 금요일 15분 점검(11/8): 지연·임박 / 재작업 / 보류·결정 필요. 사람별 순위·개수 없음
+function renderFri(open,all){
+  const li=(r,why)=>`<li data-row="${r.row}">${r.no?esc(r.no)+" · ":""}${esc(r.item)} <span class="muted">${esc(r.client||"")}${why?" · "+why:""}</span></li>`;
+  const ul=(a,f)=>a.length?`<ul>${a.map(f).join("")}</ul>`:`<p class="muted">없음</p>`;
+  const lateSoon=open.filter(r=>WATCH.late.f(r)||WATCH.soon.f(r)).sort(byUrgent),redo=all.filter(r=>r.redo),hold=open.filter(r=>stepOf(r)===HOLD);
+  $("friBody").innerHTML=`<h3>⏰ 지연·임박</h3>${ul(lateSoon,r=>li(r,ddHtml(r)))}<h3>↺ 재작업</h3>${ul(redo,r=>li(r,esc(r.redo)))}<h3>⏸ 보류·결정 필요</h3>${ul(hold,r=>li(r,esc(r.hold||"이유 빈칸")))}`;
+  $("fri").open=friOpen;
 }
 function render(){
   const all=(data?.rows||[]).filter(r=>!isGone(r)),arch=all.filter(isArch),rows=all.filter(r=>!isArch(r));
@@ -633,24 +700,25 @@ function render(){
   $("lanes").innerHTML=LANES.map(L=>`<div class="lane" data-l="${L.k}"><div class="lane-name">${L.name}<small>${L.sub}</small></div>
     <div class="row">${[...STEPS.filter(s=>s.lane===L.k&&!W.includes(s.key)),...(L.k==="factory"&&wowList.length?[WOWCELL]:[])].map((s,i,a)=>{const n=s===WOWCELL?units(wowList):counts[s.key]||0;return `<button type="button" class="step${n?" has":""}" data-s="${esc(s.key)}" aria-pressed="${fStep===s.key}">${n?'<span class="pulse"></span>':""}<span class="n${n?"":" zero"}">${n}</span><span class="l">${s.l}${s.check?'<span class="tag">확인필요</span>':""}</span><span class="t">${s.t}</span>${jobsHtml(s===WOWCELL?wowList:by[s.key],s.key)}</button>${i<a.length-1?'<span class="arrow" aria-hidden="true">›</span>':""}`}).join("")}</div></div>`).join("");
   requestAnimationFrame(fitSteps);
-  const open=rows.filter(r=>stepOf(r)!==DONE),late=open.filter(r=>r.due&&r.due<today()),stale=open.filter(isStale);
+  const open=rows.filter(r=>stepOf(r)!==DONE),held=open.filter(r=>stepOf(r)===HOLD);
   const byLane=k=>units(open.filter(r=>SK[stepOf(r)]?.lane===k));
-  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi late${late.length?" alarm":""}" data-k="late"><b>${units(late)}</b>납품일 지남</button><button type="button" class="kpi${stale.length?" stale":""}" data-k="stale"><b>${units(stale)}</b>7일째 그대로</button><button type="button" class="kpi" data-k="arch"><b>${units(arch)}</b>📦 보관함</button>`;
+  $("kpis").innerHTML=`<button type="button" class="kpi" data-k="open"><b>${units(open)}</b>진행 중</button>${LANES.map(L=>`<button type="button" class="kpi" data-k="lane:${L.k}"><b>${byLane(L.k)}</b>${L.name}</button>`).join("")}<button type="button" class="kpi${held.length?" stale":""}" data-k="hold"><b>${units(held)}</b>⏸ 보류</button><button type="button" class="kpi" data-k="arch"><b>${units(arch)}</b>📦 보관함</button>`;
+  $("watch").innerHTML=`<h2>오늘 꼭 볼 것</h2>`+Object.keys(WATCH).map(k=>{const n=units(open.filter(WATCH[k].f));return `<button type="button" class="${WATCH[k].soft?"soft":""}${n?" on":""}" data-w="${k}" aria-pressed="${fWatch===k}"><b>${n}</b>${WATCH[k].l}</button>`}).join("");
+  renderAuto();renderFri(open,all);
   $("wk").innerHTML=weekLine(data?.rows||[]);
   $("openList").textContent=`건별 현황 보기 (${units(open)})`;
   const lane=$("fLane").value,sales=$("fSales").value,dn=$("fDone").value;const client=$("fClient").value;
   const view=(dn==="arch"?arch:rows).filter(r=>{const s=stepOf(r),fin=s===DONE;
     if(fStep)return fStep===WOWCELL.key?W.includes(s):s===fStep;
-    if(fLate)return !fin&&r.due&&r.due<today();
-    if(fStale)return isStale(r);
+    if(fWatch)return !fin&&WATCH[fWatch].f(r);
     if(dn==="open"&&fin)return false;if(dn==="done"&&!fin)return false;
     if(lane&&(fin||SK[s]?.lane!==lane))return false;
     if(sales&&(r.sales||"담당 확인")!==sales)return false;if(client&&(r.client||"거래처 미정")!==client)return false;return true})
-    .sort(fStep==="공장-인쇄"?byNewIn:byLedger);
+    .sort($("fSort").value==="urgent"?byUrgent:fStep==="공장-인쇄"?byNewIn:byLedger);
   if(pinRow!=null){const k=view.findIndex(r=>r.row===pinRow);if(k>0)view.unshift(...view.splice(k,1))} // 큰 화면에서 누른 건은 1쪽 맨 위(무옥님 10/7 "누르면 이부분이 맨끝으로가있다") // 접수대장 순서(오래된 것 위), 번호 없는 견적은 뒤에 날짜순. 단 공장·인쇄 칸은 최신이 맨 위(무옥님 10/7 13:32)
   // 진행 중 한눈에: 지금 어느 단계에 몇 건인지(흐름 순서대로) — 누르면 그 단계만
   const sumEl=$("dSum");
-  if(!fStep&&!fLate&&!fStale&&dn!=="done"){
+  if(!fStep&&!fWatch&&dn!=="done"){
     const grp={};view.forEach(r=>{const s=stepOf(r);if(s!==DONE)(grp[s]=grp[s]||[]).push(r)});const cnt={};Object.keys(grp).forEach(s=>{cnt[s]=units(grp[s])});
     const steps=Object.keys(cnt).sort((a,b)=>(STEP_IDX[a]??999)-(STEP_IDX[b]??999));
     sumEl.innerHTML=steps.length?`<span class="lbl">지금 하는 일</span>`+steps.map(x=>`<button type="button" data-sum="${esc(x)}">${SK[x]?`${laneName(SK[x].lane)} · ${SK[x].l}`:esc(x)}<b>${cnt[x]}</b></button>`).join(""):"";
@@ -658,7 +726,7 @@ function render(){
   }else if(fStep==="공장-인쇄"&&data&&data.daily){const lv=liveNow(data.daily);sumEl.innerHTML=lv;sumEl.hidden=!lv;sumEl.classList.toggle("live",!!lv)}
   else if(!stepFromSum){sumEl.hidden=true}
   if(fStep!=="공장-인쇄")sumEl.classList.remove("live");
-  $("dTitle").textContent=fStep===WOWCELL.key?`공장 · ${WOWCELL.l} (${view.length}건)`:fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fLate?`납품일 지남 (${view.length}건)`:fStale?`7일째 그대로 (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
+  $("dTitle").textContent=fStep===WOWCELL.key?`공장 · ${WOWCELL.l} (${view.length}건)`:fStep?`${laneName(SK[fStep]?.lane||"factory")} · ${SK[fStep]?.l||fStep} (${view.length}건)`:fWatch?`${WATCH[fWatch].l} (${view.length}건)`:dn==="arch"?`📦 보관함 · 서류 확인 전 (${view.length}건)`:`건별 현황 (${view.length}건)`;
   if(!data){$("list").innerHTML=`<div class="empty">불러오는 중…</div>`;return}
   if(!view.length){$("list").innerHTML=`<div class="empty">${rows.length?"조건에 맞는 건이 없어.":"아직 등록된 건이 없어. '+ 새 건'으로 넣어 봐."}</div>`;return}
   $("list").innerHTML=view.map(r=>{
@@ -667,14 +735,15 @@ function render(){
     const nxt=i>=0&&!fin?ord[i+1]:null;
     const op=openRow===id,spec=itemsSum(r)||dtTxt(r)||[qtyTxt(r),r.colors?esc(r.colors)+"도":""].filter(Boolean).join(" · ")||"부수 확인필요";
     return `<article class="card compact${op?" open":""}${changed.has(rowKey(r))?" changed flash":""}">
-      <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}${fin?"":dtHtml(r,s)}</span><span class="sp" title="${esc(spec)}">${spec}${r.due?` · <b class="${isLate?"late":""}">납품 ${esc(r.due.slice(5))}</b>`:/해커스/.test(r.client||"")&&!/^영업-견적/.test(s)?" · 납품일 확인필요":""}${/^영업-견적/.test(s)&&multiQty(r)?" · <b>부수 확인필요</b>":""}${isArch(r)?` · <b>📦 ${isPend(r)?"납품 완료 "+esc(String(((r.log||[]).slice(-1)[0]||{}).at||"").slice(0,5)):"인쇄 끝 "+esc(String(afterAt(r)).slice(0,5))} · 서류 확인 전</b>`:""}</span>${(()=>{const ig=!fin&&known&&!isArch(r)?ingOf(r,s):null;return ig?`<span class="now ing ${ig[1]}" title="${esc(ig[0])}">${esc(ig[0])}</span>`:`<span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?(isPend(r)?"납품 완료 · 📦 서류 확인 전":"끝"):known?esc(st.l)+(isArch(r)?" · 📦 서류 확인 전":""):"단계 확인필요"}</span>`})()}<button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
+      <div class="line" data-open="${id}"><span class="no">${esc(r.no||"")}</span><span class="it" title="${esc(r.item)}">${esc(r.item)}</span><span class="cl">${esc(r.client||"거래처 미정")}${fin?"":dtHtml(r,s)}${r.next&&!fin?`<span class="nxl" title="다음 할 일">▶ ${esc(r.next)}${r.nextAt?" ("+esc(r.nextAt.slice(5))+")":""}</span>`:""}</span><span class="sp" title="${esc(spec)}">${ddHtml(r)}${r.redo?`<span class="rw" title="재작업: ${esc(r.redo)}">↺ 재작업</span>`:""} ${spec}${/^영업-견적/.test(s)&&multiQty(r)?" · <b>부수 확인필요</b>":""}${isArch(r)?` · <b>📦 ${isPend(r)?"납품 완료 "+esc(String(((r.log||[]).slice(-1)[0]||{}).at||"").slice(0,5)):"인쇄 끝 "+esc(String(afterAt(r)).slice(0,5))} · 서류 확인 전</b>`:""}</span>${(()=>{const ig=!fin&&known&&!isArch(r)?ingOf(r,s):null;return ig?`<span class="now ing ${ig[1]}" title="${esc(ig[0])}">${esc(ig[0])}</span>`:`<span class="now ${fin?"fin":known?st.lane:"bad"}">${fin?(isPend(r)?"납품 완료 · 📦 서류 확인 전":"끝"):known?esc(st.l)+(isArch(r)?" · 📦 서류 확인 전":""):"단계 확인필요"}</span>`})()}<button class="b p" type="button" data-show="${id}">${openRow===id?"접기 ▲":"자세히 ▶"}</button></div>
       ${op?`<div class="body">
       <div class="meta"><span>${esc(r.client||"거래처 미정")}</span>${r.qty?`<span>${qtyTxt(r)}</span>`:""}<span>${k==="design"?"디자인+인쇄":k==="wow"?"외주(와우프레스)":"인쇄"}</span><span>영업 ${esc(r.sales||"담당 확인")}</span>${r.due?`<span class="${isLate?"late":""}">납품 ${esc(r.due)}${isLate?" 지남":""}</span>`:""}</div>
-      ${known?`<div class="chain">${ord.map((x,j)=>{const done=fin||(i>=0&&j<i),cur=fin?x===DONE:j===i;return `<span class="${cur?"cur "+(fin?"fin":SK[x].lane):done?"done":""}">${done?"✓ ":""}${x===DONE?"끝":esc(SK[x].l)}</span>`}).join('<i>›</i>')}</div>`:`<span class="now bad">단계 확인필요: ${esc(s)}</span>`}
+      ${fin?"":`<div class="nx"><label class="w">다음 할 일<input data-f="next" data-id="${id}" value="${esc(r.next)}" maxlength="100" placeholder="예: 시안 2차 보내기"></label><label>날짜<input type="date" data-f="nextAt" data-id="${id}" value="${esc(r.nextAt)}"></label><label class="w">재작업(원인 한 줄)<input data-f="redo" data-id="${id}" value="${esc(r.redo)}" maxlength="100" placeholder="있을 때만 적기"></label></div>`}
+      ${s===HOLD?`<div class="holdbox">⏸ 보류 · 이유: <b>${esc(r.hold||"빈칸")}</b> <span class="muted">(풀기는 '자세한 내용 ▶' 맨 아래)</span></div>`:known?`<div class="chain">${ord.map((x,j)=>{const done=fin||(i>=0&&j<i),cur=fin?x===DONE:j===i;return `<span class="${cur?"cur "+(fin?"fin":SK[x].lane):done?"done":""}">${done?"✓ ":""}${x===DONE?"끝":esc(SK[x].l)}</span>`}).join('<i>›</i>')}</div>`:`<span class="now bad">단계 확인필요: ${esc(s)}</span>`}
       ${pressHtml(r)}
       ${itemsHtml(r)}
       ${didHtml(r,fStep&&fStep!==WOWCELL.key?fStep:s)}
-      ${r.note?`<div class="note">${esc(r.note)}</div>`:""}
+      ${r.note?`<div class="note">${esc(memoTxt(r.note))}</div>`:""}
       ${(r.log||[]).length>1?`<details class="hist" data-id="${id}"${histOpen===id?" open":""}><summary>지나온 일 ${r.log.length}개 보기</summary><button type="button" class="back sm" data-back="hist">← 뒤로</button><ol>${r.log.map(x=>`<li><b>${esc(stepName(x.step))}</b> <small>${esc(x.at)}</small> · ${esc(x.where||"어디 확인필요")} · ${esc(x.what||"내용 확인필요")}</li>`).join("")}</ol></details>`:""}
       <div class="crow">
         ${r.by||r.at?`<span class="who">마지막 변경 ${esc(r.at||"")} ${esc(r.by||"")}</span>`:"<span></span>"}
@@ -684,7 +753,7 @@ function render(){
       <details class="more"${editing===id?" open":""} data-id="${id}"><summary>단계 건너뛰기·고치기</summary>
         <button type="button" class="back sm" data-back="edit">← 뒤로</button>
         <div class="edit">
-          <label>단계 바로 고르기<select data-f="step" data-id="${id}">${ord.map(x=>`<option value="${x}"${x===s?" selected":""}>${x===DONE?"끝":`${laneName(SK[x].lane)} · ${SK[x].l}`}</option>`).join("")}</select></label>
+          <label>단계 바로 고르기<select data-f="step" data-id="${id}">${[...ord,HOLD].map(x=>`<option value="${x}"${x===s?" selected":""}>${x===DONE?"끝":`${laneName(SK[x].lane)} · ${SK[x].l}`}</option>`).join("")}</select></label>
           <label>종류<select data-f="kind" data-id="${id}"><option${k==="print"?" selected":""}>인쇄만</option><option${k==="design"?" selected":""}>디자인+인쇄</option></select></label>
           <label>영업 담당<select data-f="sales" data-id="${id}">${["강명성","김지열","박인규","담당 확인"].map(x=>`<option${(r.sales||"담당 확인")===x?" selected":""}>${x}</option>`).join("")}</select></label>
           <label>접수번호<input data-f="no" data-id="${id}" value="${esc(r.no)}"></label>
@@ -707,7 +776,7 @@ function detailHtml(r,ord,i,nxt,fin,k){
     <h4>자세한 내용</h4>
     ${row("접수번호",esc(r.no||""))}${row("품목",esc(r.item))}${row("거래처",esc(r.client||""))}${row("영업 담당",esc(r.sales||""))}
     ${row("종류",k==="design"?"디자인+인쇄":k==="wow"?"외주(와우프레스)":"인쇄")}${row("부수",qtyTxt(r)||dtTxt(r))}${row("책 사이즈",esc(sizeOf(r)))}${row("도수",r.colors?esc(r.colors)+"도":esc(colorLog(r)))}${row("납품일",esc(r.due||""))}
-    ${r.note?row("메모",esc(r.note)):""}
+    ${r.note?row("메모",esc(memoTxt(r.note))):""}
     ${itemsHtml(r)}
     <h4>지나온 일 · 근거</h4>
     ${(r.log||[]).length?`<ol class="dlog">${r.log.map(x=>`<li><b>${esc(stepName(x.step))}</b> <small>${esc(x.at)}</small><br>어디: ${esc(x.where||"확인필요")}<br>무엇: ${esc(x.what||"확인필요")}<br><small>출처: ${esc(x.by||"확인필요")}</small></li>`).join("")}</ol>`:`<p class="muted">기록 없음(확인필요)</p>`}
@@ -715,7 +784,16 @@ function detailHtml(r,ord,i,nxt,fin,k){
     <h4>단계 바꾸기</h4>
     ${pm?`<div class="confirm"><span>'${esc(nm(pm.to))}' 단계로 ${pm.dir==="next"?"넘길까":"되돌릴까"}?</span><button class="b p" type="button" data-ok="${id}">${pm.dir==="next"?"넘기기":"되돌리기"}</button><button class="b" type="button" data-cancel="${id}">취소</button></div>`
     :`<div class="btns"><button class="b" type="button" data-act="prev" data-id="${id}" ${!prv?"disabled":""}>이전 단계로</button><button class="b p" type="button" data-act="next" data-id="${id}" ${!nxt?"disabled":""}>${nxt?`다음 단계: ${nxt===DONE?"끝":SK[nxt].l}`:"끝"}</button></div>`}
+    ${holdHtml(r,ord,fin)}
   </section>`;
+}
+// 보류로·보류 풀기(11/8). 보류 이유는 Q칸 + 지나온 일 한 줄. 풀면 보류 앞 단계로 돌아감
+const holdBack=(r,ord)=>[...(r.log||[])].reverse().map(x=>normStep(x.step)).find(x=>x!==HOLD&&x!==DONE&&ord.includes(x))||ord[0];
+function holdHtml(r,ord,fin){
+  const id=r.row;if(fin)return "";
+  if(stepOf(r)===HOLD){const b=holdBack(r,ord);return `<div class="btns"><button class="b p" type="button" data-unhold="${id}" data-to="${esc(b)}">보류 풀기 → ${esc(stepName(b))}</button></div>`}
+  if(holdAsk!==id)return `<div class="btns"><button class="b" type="button" data-hold="${id}">⏸ 보류로</button></div>`;
+  return `<div class="confirm"><label>보류 이유<input data-holdwhy maxlength="100" placeholder="예: 거래처 예산 결정 기다림"></label><button class="b p" type="button" data-holdok="${id}">보류로 넘기기</button><button class="b" type="button" data-holdcancel>취소</button></div>`;
 }
 // 납품 완료(무옥님 10/5 '3번': 납품한 사람이 누르고, Claude가 나중에 명세표·용달 청구·택배 송장으로 대조)
 function delivHtml(r){
@@ -746,13 +824,13 @@ function paginate(){
 function gotoOpen(){if(openRow==null)return;pinRow=openRow;pageStarts=[0];render();showOpen()} // 누른 건을 1쪽 맨 위로 올려 펼침, 나머지는 원래 순서(무옥님 10/7 18:49)
 function showOpen(){const box=$("listbox"),c=document.querySelector("#list .card.open");if(!c||c.hidden)return;const H=box.clientHeight;if(c.offsetTop+c.offsetHeight>box.scrollTop+H||c.offsetTop<box.scrollTop)box.scrollTop=Math.max(0,c.offsetTop-8)}
 function openDrawer(){if($("drawer").hidden){pageStarts=[0]}$("drawer").hidden=false;$("shade").hidden=false;render()}
-function closeDrawer(){openRow=null;pinRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fLate=false;fStale=false;pageStarts=[0];render()}
+function closeDrawer(){openRow=null;pinRow=null;$("drawer").hidden=true;$("shade").hidden=true;fStep=null;stepFromSum=false;fWatch="";pageStarts=[0];render()}
 function onData(d){
   const sig={};(d.rows||[]).forEach(r=>{const {row,...rest}=r;sig[rowKey(r)]=JSON.stringify(rest)});
   if(!firstLoad){const c=Object.keys(sig).filter(k=>prevSig[k]!==sig[k]);if(c.length){changed=new Set(c);clearTimeout(onData.h);onData.h=setTimeout(()=>{changed.clear();render()},15000)}}
   prevSig=sig;firstLoad=false;data=d;lastOk=Date.now();
   // 사람이 칸을 고치는 중이면 화면을 다시 그리지 않음
-  const a=document.activeElement;if(a&&a.matches&&a.matches(".edit input, .form input, [data-dinfo]"))return;
+  const a=document.activeElement;if(a&&a.matches&&a.matches(".edit input, .form input, [data-dinfo], .nx input, [data-holdwhy]"))return;
   render();
 }
 async function load(){
@@ -780,12 +858,18 @@ function tick(){
   $("dot").classList.toggle("stale",stale);
   $("liveTxt").textContent=stale?`연결 끊김 (${ago}초째) · 인터넷 확인`:`실시간 · ${ago}초 전 확인`;
 }
-$("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fLate=false;fStale=false;pageStarts=[0];pinRow=null;openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
-$("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;pinRow=null;fStep=null;fLate=false;fStale=false;pageStarts=[0];
+$("lanes").addEventListener("click",e=>{const b=e.target.closest("button[data-s]");if(!b)return;const j=e.target.closest("[data-job]");fStep=b.dataset.s;fWatch="";pageStarts=[0];pinRow=null;openRow=j?+j.dataset.job:null;openDrawer();if(j)gotoOpen()});
+$("kpis").addEventListener("click",e=>{const b=e.target.closest("button[data-k]");if(!b)return;const k=b.dataset.k;pinRow=null;fStep=null;fWatch="";pageStarts=[0];
   $("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value=k==="done"?"done":k==="arch"?"arch":"open";
-  if(k.startsWith("lane:"))$("fLane").value=k.slice(5);if(k==="late")fLate=true;if(k==="stale")fStale=true;openDrawer()});
-$("openList").addEventListener("click",()=>{fStep=null;fLate=false;fStale=false;$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
-$("addTop").addEventListener("click",()=>{fStep=null;fLate=false;fStale=false;openDrawer();$("addForm").hidden=false;$("nItem").focus()});
+  if(k.startsWith("lane:"))$("fLane").value=k.slice(5);if(WATCH[k])fWatch=k;if(k==="hold")fStep=HOLD;openDrawer()});
+// 오늘 꼭 볼 것 칸 누르면 그 건들만(11/8)
+$("watch").addEventListener("click",e=>{const b=e.target.closest("button[data-w]");if(!b)return;pinRow=null;fStep=null;fWatch=b.dataset.w;pageStarts=[0];
+  $("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
+// 금요일 점검 목록의 건 누르면 그 건 펼침
+$("fri").addEventListener("toggle",()=>{friOpen=$("fri").open});
+$("friBody").addEventListener("click",e=>{const li=e.target.closest("li[data-row]");if(!li)return;fStep=null;fWatch="";$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openRow=+li.dataset.row;openDrawer();gotoOpen()});
+$("openList").addEventListener("click",()=>{fStep=null;fWatch="";$("fLane").value="";$("fSales").value="";$("fClient").value="";$("fDone").value="open";openDrawer()});
+$("addTop").addEventListener("click",()=>{fStep=null;fWatch="";openDrawer();$("addForm").hidden=false;$("nItem").focus()});
 $("dClose").addEventListener("click",closeDrawer);$("shade").addEventListener("click",closeDrawer);
 $("dBack").addEventListener("click",()=>{if(pageStarts.length>1){pageStarts.pop();render()}else if(stepFromSum){fStep=null;stepFromSum=false;pageStarts=[0];render()}else closeDrawer()});
 $("dSum").addEventListener("click",e=>{const b=e.target.closest("button[data-sum]");if(!b)return;fStep=b.dataset.sum;pinRow=null;stepFromSum=true;pageStarts=[0];$("dSum").hidden=true;render()});
@@ -805,7 +889,8 @@ $("daily").addEventListener("click",e=>{if(e.target.closest("[data-gl]")){glOpen
 $("daily").addEventListener("keydown",e=>{const c=e.target.closest&&e.target.closest("[data-pb],[data-gl]");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();c.click()}});
 $("daily").addEventListener("toggle",e=>{if(e.target.id==="dailyMore")dailyOpen=e.target.open;if(e.target.id==="dtList")dtOpen=e.target.open},true);
 window.addEventListener("resize",()=>{if(!$("drawer").hidden)render();else fitSteps()});
-["fLane","fSales","fClient","fDone"].forEach(id=>$(id).addEventListener("change",()=>{pinRow=null;fStep=null;fLate=false;fStale=false;pageStarts=[0];render()}));
+$("fSort").addEventListener("change",()=>{pageStarts=[0];render()});
+["fLane","fSales","fClient","fDone"].forEach(id=>$(id).addEventListener("change",()=>{pinRow=null;fStep=null;fWatch="";pageStarts=[0];render()}));
 $("addBtn").addEventListener("click",()=>{$("addForm").hidden=!$("addForm").hidden;if(!$("addForm").hidden)$("nItem").focus();paginate()});
 $("addCancel").addEventListener("click",()=>{$("addForm").hidden=true});
 $("addForm").addEventListener("submit",async e=>{
@@ -829,6 +914,11 @@ $("list").addEventListener("click",e=>{
     if(dk.disabled)return;dk.disabled=true;dk.textContent="저장 중…";deliv=null;
     save(r.row,{step:DONE,detail:{where:d.m+(d.info?(d.m==="택배"?" 송장 ":" ")+d.info:""),what:"납품 완료(서류 대조 전)"}});return}
   const cc=e.target.closest("button[data-cancel]");if(cc){pendingMove=null;render();return}
+  const ha=e.target.closest("button[data-hold]");if(ha){holdAsk=+ha.dataset.hold;pendingMove=null;render();const w=document.querySelector("[data-holdwhy]");if(w)w.focus();return}
+  if(e.target.closest("button[data-holdcancel]")){holdAsk=null;render();return}
+  const ho=e.target.closest("button[data-holdok]");if(ho){const r=data.rows.find(x=>x.row===+ho.dataset.holdok);if(!r)return;const w=(document.querySelector("[data-holdwhy]")||{}).value||"";
+    if(!w.trim()){toast("보류 이유를 한 줄 적어 줘.");return}if(ho.disabled)return;ho.disabled=true;holdAsk=null;save(r.row,{step:HOLD,hold:w.trim(),detail:{where:"",what:"보류: "+w.trim()}});return}
+  const uh=e.target.closest("button[data-unhold]");if(uh){if(uh.disabled)return;uh.disabled=true;save(+uh.dataset.unhold,{step:uh.dataset.to,hold:""});return}
   const ok=e.target.closest("button[data-ok]");if(ok){const pm=pendingMove,r=pm&&data.rows.find(x=>x.row===pm.id);if(!r||stepOf(r)!==pm.from){pendingMove=null;render();return}if(ok.disabled)return;ok.disabled=true;ok.textContent="저장 중…";pendingMove=null;save(r.row,{step:pm.to});return}
   const sh=e.target.closest("button[data-show]");if(sh){const id=+sh.dataset.show;openRow=openRow===id?null:id;detailOpen=null;pendingMove=null;editing=null;histOpen=null;render();showOpen();return}
   const b=e.target.closest("button[data-act]");if(!b)return;
